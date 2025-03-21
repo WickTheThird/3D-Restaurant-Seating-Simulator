@@ -17,14 +17,69 @@ class Dashboard {
     this.init();
   }
 
+  // Add this to your init() method in the Dashboard class
+
   init() {
     document
       .getElementById("create-room-btn")
       .addEventListener("click", () => this.createRoom());
 
+    // Add toggle button handler
+    document
+      .getElementById("toggle-dashboard")
+      .addEventListener("click", () => this.toggleDashboard());
+
     this.initDashboard();
     this.initDragAndDrop();
     this.initObjectManipulation();
+  }
+
+  // Add this new method to your Dashboard class
+  toggleDashboard() {
+    const dashboard = document.getElementById("dashboard");
+    const isHidden = dashboard.classList.contains("hidden");
+
+    if (isHidden) {
+      dashboard.classList.remove("hidden");
+    } else {
+      dashboard.classList.add("hidden");
+    }
+
+    // Optionally animate the toggle button
+    const toggleBtn = document.getElementById("toggle-dashboard");
+    toggleBtn.classList.toggle("rotate-180");
+  }
+
+  // Modify your createRoom method to ensure dashboard visibility
+  createRoom() {
+    const width = parseFloat(document.getElementById("room-width").value);
+    const length = parseFloat(document.getElementById("room-length").value);
+    const height = parseFloat(document.getElementById("room-height").value);
+
+    // Hide modal
+    document.getElementById("room-setup-modal").classList.add("hidden");
+
+    // Make sure dashboard is visible - use inline style as a backup
+    const dashboard = document.getElementById("dashboard");
+    dashboard.classList.remove("hidden");
+    dashboard.style.display = "block";
+
+    console.log(
+      "Dashboard visibility:",
+      dashboard.style.display,
+      "Hidden class?",
+      dashboard.classList.contains("hidden")
+    );
+
+    // Update room dimensions
+    this.room.width = width;
+    this.room.length = length;
+    this.room.height = height;
+
+    // Recreate room mesh with new dimensions
+    this.scene.remove(this.room.roomMesh);
+    this.room.roomMesh = this.room.createRoomMesh();
+    this.scene.add(this.room.roomMesh);
   }
 
   initObjectManipulation() {
