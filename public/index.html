@@ -1,255 +1,409 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <!-- Head content remains the same -->
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Restaurant 3D Simulator</title>
-  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            primary: '#3b82f6',
-            secondary: '#64748b',
-            danger: '#ef4444',
-            success: '#22c55e',
-          }
-        }
-      }
-    }
+  <head>
+    <!-- Head content remains the same -->
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Restaurant 3D Simulator</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: "#3b82f6",
+              secondary: "#64748b",
+              danger: "#ef4444",
+              success: "#22c55e",
+            },
+          },
+        },
+      };
 
-    window.testDashboard = function() {
+      window.testDashboard = function () {
         const dashboard = document.getElementById("dashboard");
         console.log("Dashboard visibility check:");
         console.log("- display:", dashboard.style.display);
         console.log("- classList:", dashboard.classList);
         console.log("- offsetWidth:", dashboard.offsetWidth);
         console.log("- offsetHeight:", dashboard.offsetHeight);
-        console.log("- getBoundingClientRect:", dashboard.getBoundingClientRect());
-        
+        console.log(
+          "- getBoundingClientRect:",
+          dashboard.getBoundingClientRect()
+        );
+
         // Force show
         dashboard.style.display = "block";
         dashboard.classList.remove("hidden");
         dashboard.style.visibility = "visible";
         dashboard.style.opacity = "1";
         console.log("Dashboard should now be visible");
-    }
-  </script>
-  <style type="text/tailwind">
-    @layer utilities {
-      .drag-handle {
-        cursor: grab;
+      };
+    </script>
+    <style type="text/tailwind">
+      @layer utilities {
+        .drag-handle {
+          cursor: grab;
+        }
+        .drag-handle:active {
+          cursor: grabbing;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .no-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        .toggle-btn-shadow {
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        .rotate-180 {
+          transform: rotate(180deg);
+        }
       }
-      .drag-handle:active {
-        cursor: grabbing;
-      }
-      .no-scrollbar::-webkit-scrollbar {
-        display: none;
-      }
-      .no-scrollbar {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-      }
-      .toggle-btn-shadow {
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-      }
-      .rotate-180 {
-        transform: rotate(180deg);
-      }
-    }
-  </style>
-</head>
-<body class="bg-gray-100 font-sans m-0 p-0 overflow-hidden">
-  <!-- Room Setup Modal -->
-  <div id="room-setup-modal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-    <div class="bg-white rounded-lg p-8 w-96 shadow-xl">
-      <h2 class="text-2xl font-bold mb-6">Restaurant Room Setup</h2>
-      
-      <div class="mb-4">
-        <label for="room-width" class="block text-sm font-medium text-gray-700 mb-1">Width (meters):</label>
-        <input type="number" id="room-width" value="10" min="1" step="0.1" 
-               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
-      </div>
-      
-      <div class="mb-4">
-        <label for="room-length" class="block text-sm font-medium text-gray-700 mb-1">Length (meters):</label>
-        <input type="number" id="room-length" value="10" min="1" step="0.1" 
-               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
-      </div>
-      
-      <div class="mb-6">
-        <label for="room-height" class="block text-sm font-medium text-gray-700 mb-1">Height (meters):</label>
-        <input type="number" id="room-height" value="3" min="1" step="0.1" 
-               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
-      </div>
-      
-      <button id="create-room-btn" class="w-full py-2 px-4 bg-primary text-white font-semibold rounded-md hover:bg-primary-dark transition-colors">
-        Create Room
-      </button>
-    </div>
-  </div>
+    </style>
+  </head>
+  <body class="bg-gray-100 font-sans m-0 p-0 overflow-hidden">
+    <!-- Room Setup Modal -->
+    <div
+      id="room-setup-modal"
+      class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+    >
+      <div class="bg-white rounded-lg p-8 w-96 shadow-xl">
+        <h2 class="text-2xl font-bold mb-6">Restaurant Room Setup</h2>
 
-  <!-- Main Application Layout -->
-  <div class="flex h-screen relative">
-    <!-- 3D Scene Container -->
-    <div id="scene-container" class="flex-1 bg-black"></div>
-    
-    <!-- Dashboard Sidebar - Added close button in header -->
-    <div id="dashboard" style="position: fixed; top: 0; right: 0; width: 320px; height: 100%; background-color: white; box-shadow: -2px 0 10px rgba(0,0,0,0.1); z-index: 100; overflow-y: auto; display: none;">
-      <!-- Dashboard Header with Close Button -->
-      <div class="flex justify-between items-center p-4 border-b border-gray-200 bg-gray-50">
-        <h1 class="text-xl font-bold text-gray-800">Dashboard</h1>
-        <button id="close-dashboard" class="p-1 hover:bg-gray-200 rounded-full transition-colors">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
+        <div class="mb-4">
+          <label
+            for="room-width"
+            class="block text-sm font-medium text-gray-700 mb-1"
+            >Width (meters):</label
+          >
+          <input
+            type="number"
+            id="room-width"
+            value="10"
+            min="1"
+            step="0.1"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+        </div>
+
+        <div class="mb-4">
+          <label
+            for="room-length"
+            class="block text-sm font-medium text-gray-700 mb-1"
+            >Length (meters):</label
+          >
+          <input
+            type="number"
+            id="room-length"
+            value="10"
+            min="1"
+            step="0.1"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+        </div>
+
+        <div class="mb-6">
+          <label
+            for="room-height"
+            class="block text-sm font-medium text-gray-700 mb-1"
+            >Height (meters):</label
+          >
+          <input
+            type="number"
+            id="room-height"
+            value="3"
+            min="1"
+            step="0.1"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+        </div>
+
+        <button
+          id="create-room-btn"
+          class="w-full py-2 px-4 bg-primary text-white font-semibold rounded-md hover:bg-primary-dark transition-colors"
+        >
+          Create Room
         </button>
       </div>
-      
-      <!-- Add Objects Section -->
-      <div class="p-4 border-b border-gray-200">
-        <h2 class="text-lg font-bold mb-3">Add Objects</h2>
-        <div class="grid grid-cols-2 gap-2">
-          <div class="draggable-item bg-gray-100 hover:bg-gray-200 p-3 rounded shadow-sm text-center cursor-pointer drag-handle" 
-               data-object-type="rectangularTable">
-            <div class="text-sm font-medium">Rectangular Table</div>
-          </div>
-          <div class="draggable-item bg-gray-100 hover:bg-gray-200 p-3 rounded shadow-sm text-center cursor-pointer drag-handle" 
-               data-object-type="roundTable">
-            <div class="text-sm font-medium">Round Table</div>
-          </div>
-          <div class="draggable-item bg-gray-100 hover:bg-gray-200 p-3 rounded shadow-sm text-center cursor-pointer drag-handle" 
-               data-object-type="seat">
-            <div class="text-sm font-medium">Seat</div>
+    </div>
+
+    <!-- Main Application Layout -->
+    <div class="flex h-screen relative">
+      <!-- 3D Scene Container -->
+      <div id="scene-container" class="flex-1 bg-black"></div>
+
+      <!-- Dashboard Sidebar - Added close button in header -->
+      <div
+        id="dashboard"
+        style="
+          position: fixed;
+          top: 0;
+          right: 0;
+          width: 320px;
+          height: 100%;
+          background-color: white;
+          box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+          z-index: 100;
+          overflow-y: auto;
+          display: none;
+        "
+      >
+        <!-- Dashboard Header with Close Button -->
+        <div
+          class="flex justify-between items-center p-4 border-b border-gray-200 bg-gray-50"
+        >
+          <h1 class="text-xl font-bold text-gray-800">Dashboard</h1>
+          <button
+            id="close-dashboard"
+            class="p-1 hover:bg-gray-200 rounded-full transition-colors"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-6 w-6 text-gray-600"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Add Objects Section -->
+        <div class="p-4 border-b border-gray-200">
+          <h2 class="text-lg font-bold mb-3">Add Objects</h2>
+          <div class="grid grid-cols-2 gap-2">
+            <div
+              class="draggable-item bg-gray-100 hover:bg-gray-200 p-3 rounded shadow-sm text-center cursor-pointer drag-handle"
+              data-object-type="rectangularTable"
+            >
+              <div class="text-sm font-medium">Rectangular Table</div>
+            </div>
+            <div
+              class="draggable-item bg-gray-100 hover:bg-gray-200 p-3 rounded shadow-sm text-center cursor-pointer drag-handle"
+              data-object-type="roundTable"
+            >
+              <div class="text-sm font-medium">Round Table</div>
+            </div>
+            <div
+              class="draggable-item bg-gray-100 hover:bg-gray-200 p-3 rounded shadow-sm text-center cursor-pointer drag-handle"
+              data-object-type="seat"
+            >
+              <div class="text-sm font-medium">Seat</div>
+            </div>
           </div>
         </div>
-      </div>
-      
-      <!-- Rest of the dashboard content remains the same -->
-      <!-- Objects List Section -->
-      <div class="p-4 border-b border-gray-200">
-        <h2 class="text-lg font-bold mb-3">Objects</h2>
-        <ul id="object-list" class="space-y-1">
-          <!-- Object list items will be dynamically added here -->
-        </ul>
-      </div>
-      
-      <!-- Properties Editor Section -->
-      <div class="p-4">
-        <h2 class="text-lg font-bold mb-3">Properties</h2>
-        
-        <!-- No Selection Message -->
-        <div id="no-selection-message" class="text-gray-500 italic">
-          No object selected
+
+        <!-- Rest of the dashboard content remains the same -->
+        <!-- Objects List Section -->
+        <div class="p-4 border-b border-gray-200">
+          <h2 class="text-lg font-bold mb-3">Objects</h2>
+          <ul id="object-list" class="space-y-1">
+            <!-- Object list items will be dynamically added here -->
+          </ul>
         </div>
-        
-        <!-- Property Editor (hidden initially) -->
-        <div id="property-editor" class="hidden">
-          <!-- Common Properties -->
-          <div class="mb-4">
-            <label for="object-name" class="block text-sm font-medium text-gray-700 mb-1">Name:</label>
-            <input type="text" id="object-name" 
-                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+
+        <!-- Properties Editor Section -->
+        <div class="p-4">
+          <h2 class="text-lg font-bold mb-3">Properties</h2>
+
+          <!-- No Selection Message -->
+          <div id="no-selection-message" class="text-gray-500 italic">
+            No object selected
           </div>
-          
-          <!-- Rectangular Table Properties -->
-          <div id="rectangular-table-props" class="hidden space-y-3">
-            <!-- ... Rectangular table properties ... -->
-          </div>
-          
-          <!-- Round Table Properties -->
-          <div id="round-table-props" class="hidden space-y-3">
-            <!-- ... Round table properties ... -->
-          </div>
-          
-          <!-- Seat Properties -->
-          <div id="seat-props" class="hidden space-y-3">
-            <!-- ... Seat properties ... -->
-          </div>
-          
-          <!-- Update Button -->
-          <div class="mt-6 flex justify-end space-x-2">
-            <button id="update-object-btn" class="py-2 px-4 bg-success text-white font-medium rounded-md hover:bg-green-600 transition-colors">
-              Update
-            </button>
-            <button id="delete-object-btn" class="py-2 px-4 bg-danger text-white font-medium rounded-md hover:bg-red-600 transition-colors">
-              Delete
-            </button>
+
+          <!-- Property Editor (hidden initially) -->
+          <div id="property-editor" class="hidden">
+            <!-- Common Properties -->
+            <div class="mb-4">
+              <label
+                for="object-name"
+                class="block text-sm font-medium text-gray-700 mb-1"
+                >Name:</label
+              >
+              <input
+                type="text"
+                id="object-name"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+
+            <!-- Rectangular Table Properties -->
+            <div id="rectangular-table-props" class="hidden space-y-3">
+              <!-- ... Rectangular table properties ... -->
+            </div>
+
+            <!-- Round Table Properties -->
+            <div id="round-table-props" class="hidden space-y-3">
+              <!-- ... Round table properties ... -->
+            </div>
+
+            <!-- Seat Properties -->
+            <div id="seat-props" class="hidden space-y-3">
+              <!-- ... Seat properties ... -->
+            </div>
+
+            <!-- Update Button -->
+            <div class="mt-6 flex justify-end space-x-2">
+              <button
+                id="update-object-btn"
+                class="py-2 px-4 bg-success text-white font-medium rounded-md hover:bg-green-600 transition-colors"
+              >
+                Update
+              </button>
+              <button
+                id="delete-object-btn"
+                class="py-2 px-4 bg-danger text-white font-medium rounded-md hover:bg-red-600 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
-  
-  <!-- Toggle Dashboard Button (Bottom Right Corner) -->
-  <button id="toggle-dashboard" class="fixed bottom-4 right-4 z-50 w-16 h-16 flex items-center justify-center bg-primary text-white rounded-full shadow-lg hover:bg-blue-600 focus:outline-none transition-all duration-300">
-    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-      <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-      <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-    </svg>
-  </button>
-  
-  <!-- You can remove this emergency button once everything works -->
-  <button id="emergency-show" class="fixed top-4 right-4 z-50 py-2 px-4 bg-red-600 text-white rounded-md shadow-lg hover:bg-red-700">
-    Force Show Dashboard
-  </button>
 
-  <script src="bundle.js"></script>
-  
-  <!-- Direct DOM manipulation script for dashboard -->
-  <script>
-    // Direct DOM manipulation for dashboard toggle - Using brute force method
-    document.getElementById("toggle-dashboard").addEventListener("click", function() {
-      const dashboard = document.getElementById("dashboard");
-      const currentDisplay = window.getComputedStyle(dashboard).display;
-      
-      console.log("Current computed style:", currentDisplay);
-      
-      if (currentDisplay === "none") {
-        // Using the brute force approach for more reliable display
-        dashboard.style.cssText = "position: fixed; top: 0; right: 0; width: 320px; height: 100%; background-color: white; box-shadow: -2px 0 10px rgba(0,0,0,0.1); z-index: 9999; display: block !important; visibility: visible !important; opacity: 1 !important;";
-        console.log("Brute force showing dashboard");
-      } else {
-        dashboard.style.display = "none";
-        console.log("Setting display to none");
-      }
-      
-      // Verify the change happened
-      setTimeout(() => {
-        console.log("Style after change:", dashboard.style.display);
-        console.log("Computed style after change:", window.getComputedStyle(dashboard).display);
-      }, 50);
-    });
-    
-    // Close dashboard button handler
-    document.getElementById("close-dashboard").addEventListener("click", function() {
-      document.getElementById("dashboard").style.display = "none";
-      console.log("Dashboard closed via close button");
-    });
-    
-    // Make sure the room setup button also properly shows the dashboard
-    document.getElementById("create-room-btn").addEventListener("click", function() {
-      // Hide modal
-      document.getElementById("room-setup-modal").style.display = "none";
-      
-      // Show dashboard with the brute force approach
-      const dashboard = document.getElementById("dashboard");
-      dashboard.style.cssText = "position: fixed; top: 0; right: 0; width: 320px; height: 100%; background-color: white; box-shadow: -2px 0 10px rgba(0,0,0,0.1); z-index: 9999; display: block !important; visibility: visible !important; opacity: 1 !important;";
-      console.log("Dashboard shown after room creation using brute force");
-    });
-    
-    // Emergency button for forcing dashboard visibility (can be removed once everything works)
-    document.getElementById("emergency-show").addEventListener("click", function() {
-      const dashboard = document.getElementById("dashboard");
-      
-      // Brute force approach
-      dashboard.style.cssText = "position: fixed; top: 0; right: 0; width: 320px; height: 100%; background-color: white; box-shadow: -2px 0 10px rgba(0,0,0,0.1); z-index: 9999; display: block !important; visibility: visible !important; opacity: 1 !important;";
-      
-      console.log("Emergency dashboard show triggered");
-    });
-  </script>
-</body>
+    <button
+      id="toggle-dashboard"
+      class="fixed bottom-4 right-4 z-50 w-16 h-16 flex items-center justify-center bg-primary text-white rounded-full shadow-lg hover:bg-blue-600 focus:outline-none transition-all duration-300 hidden"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        class="h-8 w-8"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        stroke-width="2"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+        />
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+        />
+      </svg>
+    </button>
+
+    <!-- Emergency Show Dashboard Button with Animation -->
+    <button
+      id="emergency-show"
+      class="fixed bottom-4 right-4 z-50 w-16 h-16 flex items-center justify-center bg-primary text-white rounded-full shadow-lg hover:bg-blue-600 focus:outline-none transition-all duration-300"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        class="h-8 w-8 transition-transform duration-300"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        stroke-width="2"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+        />
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+        />
+      </svg>
+    </button>
+
+    <script src="bundle.js"></script>
+
+    <!-- Direct DOM manipulation script for dashboard -->
+    <script>
+      // Direct DOM manipulation for dashboard toggle - Using brute force method
+      document
+        .getElementById("toggle-dashboard")
+        .addEventListener("click", function () {
+          const dashboard = document.getElementById("dashboard");
+          const currentDisplay = window.getComputedStyle(dashboard).display;
+
+          console.log("Current computed style:", currentDisplay);
+
+          if (currentDisplay === "none") {
+            // Using the brute force approach for more reliable display
+            dashboard.style.cssText =
+              "position: fixed; top: 0; right: 0; width: 320px; height: 100%; background-color: white; box-shadow: -2px 0 10px rgba(0,0,0,0.1); z-index: 9999; display: block !important; visibility: visible !important; opacity: 1 !important;";
+            console.log("Brute force showing dashboard");
+          } else {
+            dashboard.style.display = "none";
+            console.log("Setting display to none");
+          }
+
+          // Verify the change happened
+          setTimeout(() => {
+            console.log("Style after change:", dashboard.style.display);
+            console.log(
+              "Computed style after change:",
+              window.getComputedStyle(dashboard).display
+            );
+          }, 50);
+        });
+
+      // Close dashboard button handler
+      document
+        .getElementById("close-dashboard")
+        .addEventListener("click", function () {
+          document.getElementById("dashboard").style.display = "none";
+          console.log("Dashboard closed via close button");
+        });
+
+      // Make sure the room setup button also properly shows the dashboard
+      document
+        .getElementById("create-room-btn")
+        .addEventListener("click", function () {
+          // Hide modal
+          document.getElementById("room-setup-modal").style.display = "none";
+
+          // Show dashboard with the brute force approach
+          const dashboard = document.getElementById("dashboard");
+          dashboard.style.cssText =
+            "position: fixed; top: 0; right: 0; width: 320px; height: 100%; background-color: white; box-shadow: -2px 0 10px rgba(0,0,0,0.1); z-index: 9999; display: block !important; visibility: visible !important; opacity: 1 !important;";
+          console.log("Dashboard shown after room creation using brute force");
+        });
+
+      // Emergency button for forcing dashboard visibility (can be removed once everything works)
+      document
+        .getElementById("emergency-show")
+        .addEventListener("click", function () {
+          const dashboard = document.getElementById("dashboard");
+          const button = this;
+          const icon = button.querySelector("svg");
+
+          // Toggle the rotation class on the icon for animation
+          icon.classList.toggle("rotate-180");
+
+          // Show or hide dashboard based on current state
+          const currentDisplay = window.getComputedStyle(dashboard).display;
+
+          if (currentDisplay === "none") {
+            // Brute force approach
+            dashboard.style.cssText =
+              "position: fixed; top: 0; right: 0; width: 320px; height: 100%; background-color: white; box-shadow: -2px 0 10px rgba(0,0,0,0.1); z-index: 9999; display: block !important; visibility: visible !important; opacity: 1 !important;";
+          } else {
+            dashboard.style.display = "none";
+            // Rotate back when closing
+            icon.classList.remove("rotate-180");
+          }
+
+          console.log("Emergency dashboard toggle triggered");
+        });
+    </script>
+  </body>
 </html>
