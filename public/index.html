@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <!-- Head content remains the same -->
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Restaurant 3D Simulator</title>
@@ -40,6 +39,9 @@
         dashboard.style.opacity = "1";
         console.log("Dashboard should now be visible");
       };
+
+      // Store a flag to track whether click handlers have been added
+      window._clickHandlersAdded = false;
     </script>
     <style type="text/tailwind">
       @layer utilities {
@@ -219,25 +221,27 @@
             <div
               class="draggable-item bg-gray-100 hover:bg-gray-200 p-3 rounded shadow-sm text-center cursor-pointer drag-handle"
               data-object-type="rectangularTable"
+              draggable="true"
             >
               <div class="text-sm font-medium">Rectangular Table</div>
             </div>
             <div
               class="draggable-item bg-gray-100 hover:bg-gray-200 p-3 rounded shadow-sm text-center cursor-pointer drag-handle"
               data-object-type="roundTable"
+              draggable="true"
             >
               <div class="text-sm font-medium">Round Table</div>
             </div>
             <div
               class="draggable-item bg-gray-100 hover:bg-gray-200 p-3 rounded shadow-sm text-center cursor-pointer drag-handle"
               data-object-type="seat"
+              draggable="true"
             >
               <div class="text-sm font-medium">Seat</div>
             </div>
           </div>
         </div>
 
-        <!-- Rest of the dashboard content remains the same -->
         <!-- Objects List Section -->
         <div class="p-4 border-b border-gray-200">
           <h2 class="text-lg font-bold mb-3">Objects</h2>
@@ -522,117 +526,74 @@
 
     <script src="bundle.js"></script>
 
-    <!-- Direct DOM manipulation script for dashboard -->
+    <!-- Consolidated dashboard scripts -->
     <script>
-      // Direct DOM manipulation for dashboard toggle - Using brute force method
-      document
-        .getElementById("toggle-dashboard")
-        .addEventListener("click", function () {
-          const dashboard = document.getElementById("dashboard");
-          const currentDisplay = window.getComputedStyle(dashboard).display;
+      // IMPORTANT: Let the Dashboard.js initialize the click handlers
+      // We'll prevent duplicate event handlers by using this approach
 
-          console.log("Current computed style:", currentDisplay);
+      // WAIT FOR APP INITIALIZATION
+      window.addEventListener("load", function() {
+        console.log("Window loaded, setting up UI handlers");
 
-          if (currentDisplay === "none") {
-            // Using the brute force approach for more reliable display
-            dashboard.style.cssText =
-              "position: fixed; top: 0; right: 0; width: 320px; height: 100%; background-color: white; box-shadow: -2px 0 10px rgba(0,0,0,0.1); z-index: 9999; display: block !important; visibility: visible !important; opacity: 1 !important;";
-            console.log("Brute force showing dashboard");
-          } else {
-            dashboard.style.display = "none";
-            console.log("Setting display to none");
-          }
-
-          // Verify the change happened
-          setTimeout(() => {
-            console.log("Style after change:", dashboard.style.display);
-            console.log(
-              "Computed style after change:",
-              window.getComputedStyle(dashboard).display
-            );
-          }, 50);
+        // Toggle dashboard button handler
+        document.getElementById("toggle-dashboard").addEventListener("click", function() {
+          toggleDashboard();
         });
 
-      // Close dashboard button handler
-      document
-        .getElementById("close-dashboard")
-        .addEventListener("click", function () {
+        // Close dashboard button handler
+        document.getElementById("close-dashboard").addEventListener("click", function() {
           document.getElementById("dashboard").style.display = "none";
-          console.log("Dashboard closed via close button");
         });
 
-      // Make sure the room setup button also properly shows the dashboard
-      document
-        .getElementById("create-room-btn")
-        .addEventListener("click", function () {
-          // Hide modal
-          document.getElementById("room-setup-modal").style.display = "none";
+        // Room setup button (handled by Dashboard.js create-room-btn event listener)
 
-          // Show dashboard with the brute force approach
-          const dashboard = document.getElementById("dashboard");
-          dashboard.style.cssText =
-            "position: fixed; top: 0; right: 0; width: 320px; height: 100%; background-color: white; box-shadow: -2px 0 10px rgba(0,0,0,0.1); z-index: 9999; display: block !important; visibility: visible !important; opacity: 1 !important;";
-          console.log("Dashboard shown after room creation using brute force");
-        });
-
-      // Emergency button for forcing dashboard visibility with animation
-      document
-        .getElementById("emergency-show")
-        .addEventListener("click", function () {
-          const dashboard = document.getElementById("dashboard");
-          const button = this;
-          const icon = button.querySelector("svg");
-
-          // Toggle the rotation class on the icon for animation
+        // Emergency dashboard show/hide button
+        document.getElementById("emergency-show").addEventListener("click", function() {
+          toggleDashboard();
+          const icon = this.querySelector("svg");
           icon.classList.toggle("rotate-180");
-
-          // Show or hide dashboard based on current state
-          const currentDisplay = window.getComputedStyle(dashboard).display;
-
-          if (currentDisplay === "none") {
-            // Brute force approach
-            dashboard.style.cssText =
-              "position: fixed; top: 0; right: 0; width: 320px; height: 100%; background-color: white; box-shadow: -2px 0 10px rgba(0,0,0,0.1); z-index: 9999; display: block !important; visibility: visible !important; opacity: 1 !important;";
-          } else {
-            dashboard.style.display = "none";
-            // Rotate back when closing
-            icon.classList.remove("rotate-180");
-          }
-
-          console.log("Emergency dashboard toggle triggered");
         });
 
-      // NEW: Add click-to-add functionality for draggable items
-      document.querySelectorAll(".draggable-item").forEach((item) => {
-        item.addEventListener("click", function () {
-          const objectType = this.dataset.objectType;
-          console.log(`Click to add ${objectType}`);
-
-          try {
-            // Access the dashboard instance from the window object
-            if (window._dashboard) {
-              window._dashboard.addObjectAtCenterPosition(objectType);
-              console.log(`Added ${objectType} at center position`);
-            } else {
-              console.warn(
-                "Dashboard instance not accessible via window._dashboard"
-              );
-              // Fallback - show message to user
-              alert(
-                `To add a ${objectType}, please drag and drop it onto the scene.`
-              );
-            }
-          } catch (error) {
-            console.error("Error adding object:", error);
-          }
-        });
+        // Update drag and drop event handlers for scene container
+        setupDragAndDropHandlers();
+        
+        // Fix DragControls after a short delay
+        setTimeout(applyDragControlsFix, 1000);
       });
 
-      // NEW: Add visual feedback for drag-and-drop operations
-      const sceneContainer = document.getElementById("scene-container");
-
-      // Make sure scene can receive drag events with visual feedback
-      if (sceneContainer) {
+      // Helper functions
+      function toggleDashboard() {
+        const dashboard = document.getElementById("dashboard");
+        const currentDisplay = window.getComputedStyle(dashboard).display;
+        
+        if (currentDisplay === "none") {
+          showDashboard();
+        } else {
+          dashboard.style.display = "none";
+        }
+      }
+      
+      function showDashboard() {
+        const dashboard = document.getElementById("dashboard");
+        dashboard.style.cssText =
+          "position: fixed; top: 0; right: 0; width: 320px; height: 100%; " +
+          "background-color: white; box-shadow: -2px 0 10px rgba(0,0,0,0.1); " +
+          "z-index: 9999; display: block !important; visibility: visible !important; opacity: 1 !important;";
+      }
+      
+      function applyDragControlsFix() {
+        if (window._dashboard) {
+          console.log("Applying drag controls fix");
+          window._dashboard.fixDragControlsMatrixWorldError();
+        } else {
+          console.warn("Dashboard instance not available, skipping drag controls fix");
+        }
+      }
+      
+      function setupDragAndDropHandlers() {
+        const sceneContainer = document.getElementById("scene-container");
+        if (!sceneContainer) return;
+        
         sceneContainer.addEventListener("dragover", (e) => {
           e.preventDefault();
           e.dataTransfer.dropEffect = "copy";
@@ -647,38 +608,16 @@
           sceneContainer.classList.remove("drag-over");
         });
       }
-    </script>
 
-    <script>
-      // Fix for DragControls matrixWorld error
-      // This will run once after the page is loaded
-      window.addEventListener("load", function () {
-        setTimeout(() => {
-          // If Dashboard is initialized
-          if (window._dashboard) {
-            // Clean up null references in draggable objects array
-            window._dashboard.cleanupDraggableObjects();
-          }
-        }, 1000); // Wait a short time for everything to initialize
-      });
-    </script>
-
-    <!-- Add this right before the closing body tag -->
-    <script>
-      // Fix for DragControls error without accessing THREE directly
-      document.addEventListener("DOMContentLoaded", function () {
-        // Wait for everything to load
-        setTimeout(() => {
-          // Access dashboard through the global reference
-          if (window._dashboard) {
-            console.log("Found dashboard instance, applying DragControls fix");
-            window._dashboard.fixDragControlsMatrixWorldError();
-          } else {
-            console.warn(
-              "Dashboard not available in window._dashboard, can't apply fixes"
-            );
-          }
-        }, 1000);
+      // ======================================================
+      // IMPORTANT: ONLY ADD CLICK HANDLERS FROM HERE
+      // This ensures we don't duplicate event handlers
+      // ======================================================
+      document.addEventListener("DOMContentLoaded", function() {
+        // Let Dashboard.js initialize everything through its own methods
+        // DO NOT add draggable item click handlers here - they should only be added once by Dashboard.js
+        
+        console.log("DOMContentLoaded: Dashboard.js will handle object creation");
       });
     </script>
   </body>

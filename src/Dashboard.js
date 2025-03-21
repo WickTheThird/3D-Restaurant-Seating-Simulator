@@ -57,35 +57,37 @@ class Dashboard {
   addObjectAtCenterPosition(objectType) {
     console.log(`Adding ${objectType} at center position`);
     try {
+      // Create only ONE object based on type - using our own helpers
       let object;
 
-      // Create object based on type
+      // Use only our custom methods to create objects
       switch (objectType) {
         case "rectangularTable":
+          // Don't call this.room.addRectangularTable() - use only our direct method
           object = this.createRectTableAtPosition(0, 0, 1.5, 2);
           break;
 
         case "roundTable":
+          // Don't call this.room.addRoundTable() - use only our direct method
           object = this.createRoundTableAtPosition(0, 0, 1);
           break;
 
         case "seat":
+          // Don't call this.room.addSeat() - use only our direct method
           object = this.createSeatAtPosition(0, 0);
           break;
       }
 
-      // Add to scene and make draggable
+      // Rest of the method remains the same
       if (object && object.mesh) {
         // Force a render cycle to ensure object is properly initialized
         this.renderer.render(this.scene, this.camera);
 
         // Wait briefly to ensure object is initialized properly in Three.js
         setTimeout(() => {
-          // Double check that the mesh is valid before adding
           if (object.mesh && object.mesh.matrixWorld) {
             this.draggableObjects.push(object.mesh);
 
-            // Update controls
             try {
               this.updateDragControls();
             } catch (err) {
@@ -98,7 +100,6 @@ class Dashboard {
           }
         }, 100);
 
-        // Show dashboard to see the new object
         this.showDashboard();
       } else {
         console.error(`Failed to create ${objectType}`);
@@ -459,12 +460,10 @@ class Dashboard {
     );
 
     try {
-      // Use raycasting to find the intersection with the floor plane
       const raycaster = new THREE.Raycaster();
       const mouse = new THREE.Vector2(screenX, screenY);
       raycaster.setFromCamera(mouse, this.camera);
 
-      // Create a horizontal plane at y=0 for intersection
       const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
       const intersection = new THREE.Vector3();
 
@@ -475,7 +474,6 @@ class Dashboard {
 
       if (!didIntersect) {
         console.warn("Raycasting failed, using default position");
-        // Use default position if raycasting fails
         intersection.set(0, 0, 0);
       }
 
@@ -483,11 +481,12 @@ class Dashboard {
         `World position: (${intersection.x}, ${intersection.y}, ${intersection.z})`
       );
 
+      // Create only ONE object based on type - using our own helpers
       let object;
 
-      // Create object based on type
       switch (objectType) {
         case "rectangularTable":
+          // Only call our direct method, not Room's method
           object = this.createRectTableAtPosition(
             intersection.x,
             intersection.z,
@@ -497,6 +496,7 @@ class Dashboard {
           break;
 
         case "roundTable":
+          // Only call our direct method, not Room's method
           object = this.createRoundTableAtPosition(
             intersection.x,
             intersection.z,
@@ -505,21 +505,19 @@ class Dashboard {
           break;
 
         case "seat":
+          // Only call our direct method, not Room's method
           object = this.createSeatAtPosition(intersection.x, intersection.z);
           break;
       }
 
-      // Add to scene and make draggable
+      // Rest of your existing code
       if (object && object.mesh) {
-        // Make sure object mesh is valid before adding to draggable objects
         if (object.mesh.type && object.mesh.matrixWorld !== undefined) {
           this.draggableObjects.push(object.mesh);
           this.updateDragControls();
           this.updateObjectList();
           this.selectObject(object);
           console.log(`Successfully created ${objectType}`);
-
-          // Show dashboard to see the new object
           this.showDashboard();
         } else {
           console.error(
@@ -957,6 +955,7 @@ class Dashboard {
     });
   }
 
+  // Update addSeatToTable to use our helper method
   addSeatToTable(tableType) {
     if (
       !this.selectedObject ||
@@ -968,10 +967,9 @@ class Dashboard {
       return;
     }
 
-    // Create new seat
+    // Calculate position
     const tablePosition = this.selectedObject.position.clone();
-    let offsetX = 0,
-      offsetZ = 0;
+    let offsetX = 0;
 
     if (tableType === "rectangular") {
       offsetX = this.selectedObject.userData?.width / 2 + 0.3 || 1;
@@ -979,6 +977,7 @@ class Dashboard {
       offsetX = this.selectedObject.userData?.radius + 0.3 || 1.3;
     }
 
+    // Use our direct helper method, not Room's method
     const seat = this.createSeatAtPosition(
       tablePosition.x + offsetX,
       tablePosition.z
