@@ -17,59 +17,71 @@ class Dashboard {
     this.init();
   }
 
-  // Add this to your init() method in the Dashboard class
-
   init() {
-    document
-      .getElementById("create-room-btn")
-      .addEventListener("click", () => this.createRoom());
+    this.safeAddEventListener("create-room-btn", "click", () =>
+      this.createRoom()
+    );
 
     // Add toggle button handler
-    document
-      .getElementById("toggle-dashboard")
-      .addEventListener("click", () => this.toggleDashboard());
+    this.safeAddEventListener("toggle-dashboard", "click", () =>
+      this.toggleDashboard()
+    );
 
     this.initDashboard();
     this.initDragAndDrop();
     this.initObjectManipulation();
   }
 
-  // Add this new method to your Dashboard class
+  // Toggle dashboard method
   toggleDashboard() {
-    const dashboard = document.getElementById("dashboard");
-    const isHidden = dashboard.classList.contains("hidden");
+    console.log("Toggle button clicked!");
 
-    if (isHidden) {
-      dashboard.classList.remove("hidden");
+    const dashboard = document.getElementById("dashboard");
+    if (!dashboard) return;
+
+    // Check the current state
+    const isVisible = window.getComputedStyle(dashboard).display !== "none";
+    console.log("Dashboard currently visible:", isVisible);
+
+    // Use brute force approach to show/hide dashboard
+    if (isVisible) {
+      dashboard.style.display = "none";
     } else {
-      dashboard.classList.add("hidden");
+      // Brute force show dashboard
+      dashboard.style.cssText =
+        "position: fixed; top: 0; right: 0; width: 320px; height: 100%; background-color: white; box-shadow: -2px 0 10px rgba(0,0,0,0.1); z-index: 9999; display: block !important; visibility: visible !important; opacity: 1 !important;";
     }
 
-    // Optionally animate the toggle button
+    // Update button icon
     const toggleBtn = document.getElementById("toggle-dashboard");
-    toggleBtn.classList.toggle("rotate-180");
+    if (toggleBtn) toggleBtn.classList.toggle("rotate-180");
+
+    console.log("Dashboard style after toggle:", dashboard.style.display);
   }
 
-  // Modify your createRoom method to ensure dashboard visibility
+  // Show dashboard method (used by other components)
+  showDashboard() {
+    const dashboard = document.getElementById("dashboard");
+    if (dashboard) {
+      // Use the brute force approach for reliable display
+      dashboard.style.cssText =
+        "position: fixed; top: 0; right: 0; width: 320px; height: 100%; background-color: white; box-shadow: -2px 0 10px rgba(0,0,0,0.1); z-index: 9999; display: block !important; visibility: visible !important; opacity: 1 !important;";
+      console.log("Dashboard shown via showDashboard method");
+    }
+  }
+
+  // Modified createRoom method
   createRoom() {
     const width = parseFloat(document.getElementById("room-width").value);
     const length = parseFloat(document.getElementById("room-length").value);
     const height = parseFloat(document.getElementById("room-height").value);
 
     // Hide modal
-    document.getElementById("room-setup-modal").classList.add("hidden");
+    const modal = document.getElementById("room-setup-modal");
+    if (modal) modal.style.display = "none";
 
-    // Make sure dashboard is visible - use inline style as a backup
-    const dashboard = document.getElementById("dashboard");
-    dashboard.classList.remove("hidden");
-    dashboard.style.display = "block";
-
-    console.log(
-      "Dashboard visibility:",
-      dashboard.style.display,
-      "Hidden class?",
-      dashboard.classList.contains("hidden")
-    );
+    // Show dashboard using brute force method
+    this.showDashboard();
 
     // Update room dimensions
     this.room.width = width;
@@ -82,9 +94,99 @@ class Dashboard {
     this.scene.add(this.room.roomMesh);
   }
 
+  initDashboard() {
+    // Use safe event listener methods for all buttons
+    this.safeAddEventListener("update-object-btn", "click", () =>
+      this.updateSelectedObject()
+    );
+    this.safeAddEventListener("delete-object-btn", "click", () =>
+      this.deleteSelectedObject()
+    );
+    this.safeAddEventListener("add-rect-seat-btn", "click", () =>
+      this.addSeatToTable("rectangular")
+    );
+    this.safeAddEventListener("add-round-seat-btn", "click", () =>
+      this.addSeatToTable("round")
+    );
+
+    // Close dashboard button handler
+    this.safeAddEventListener("close-dashboard", "click", () => {
+      const dashboard = document.getElementById("dashboard");
+      if (dashboard) dashboard.style.display = "none";
+    });
+
+    // Handle color inputs safely
+    this.safeAddColorInputHandler("rect-color", "rect-color-preview");
+    this.safeAddColorInputHandler("round-color", "round-color-preview");
+  }
+
+  // Helper method for color input handlers
+  safeAddColorInputHandler(inputId, previewId) {
+    const input = document.getElementById(inputId);
+    const preview = document.getElementById(previewId);
+
+    if (input && preview) {
+      input.addEventListener("input", (e) => {
+        preview.style.backgroundColor = e.target.value;
+      });
+    }
+  }
+
+  initDragAndDrop() {
+    const draggableItems = document.querySelectorAll(".draggable-item");
+
+    draggableItems.forEach((item) => {
+      item.addEventListener("dragstart", (e) => {
+        e.dataTransfer.setData("objectType", item.dataset.objectType);
+      });
+
+      // Make items draggable
+      item.setAttribute("draggable", "true");
+    });
+
+    // Handle drag over scene
+    const sceneContainer = document.getElementById("scene-container");
+    if (!sceneContainer) return;
+
+    sceneContainer.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "copy";
+    });
+
+    // Handle drop on scene
+    sceneContainer.addEventListener("drop", (e) => {
+      e.preventDefault();
+      const objectType = e.dataTransfer.getData("objectType");
+
+      // Calculate drop position in 3D space using raycasting
+      const rect = sceneContainer.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / sceneContainer.offsetWidth) * 2 - 1;
+      const y = -((e.clientY - rect.top) / sceneContainer.offsetHeight) * 2 + 1;
+
+      this.createObjectAtPosition(objectType, x, y);
+    });
+
+    // Initialize drag controls for 3D objects
+    this.initDragControls();
+  }
+
+  safeAddEventListener(elementId, event, handler) {
+    const element = document.getElementById(elementId);
+    if (element) {
+      element.addEventListener(event, handler);
+      return true;
+    }
+    console.log(
+      `Warning: Element with ID '${elementId}' not found, skipping event listener`
+    );
+    return false;
+  }
+
   initObjectManipulation() {
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
+
+    if (!this.renderer || !this.renderer.domElement) return;
 
     this.renderer.domElement.addEventListener("click", (event) => {
       const rect = this.renderer.domElement.getBoundingClientRect();
@@ -123,91 +225,6 @@ class Dashboard {
       }
       // Could add more keyboard shortcuts here
     });
-  }
-
-  createRoom() {
-    const width = parseFloat(document.getElementById("room-width").value);
-    const length = parseFloat(document.getElementById("room-length").value);
-    const height = parseFloat(document.getElementById("room-height").value);
-
-    // Hide modal and show dashboard
-    document.getElementById("room-setup-modal").classList.add("hidden");
-    document.getElementById("dashboard").classList.remove("hidden");
-
-    // Update room dimensions
-    this.room.width = width;
-    this.room.length = length;
-    this.room.height = height;
-
-    // Recreate room mesh with new dimensions
-    this.scene.remove(this.room.roomMesh);
-    this.room.roomMesh = this.room.createRoomMesh();
-    this.scene.add(this.room.roomMesh);
-  }
-
-  initDashboard() {
-    // Object button handlers
-    document
-      .getElementById("update-object-btn")
-      .addEventListener("click", () => this.updateSelectedObject());
-    document
-      .getElementById("delete-object-btn")
-      .addEventListener("click", () => this.deleteSelectedObject());
-
-    // Table seat management
-    document
-      .getElementById("add-rect-seat-btn")
-      .addEventListener("click", () => this.addSeatToTable("rectangular"));
-    document
-      .getElementById("add-round-seat-btn")
-      .addEventListener("click", () => this.addSeatToTable("round"));
-
-    // Color preview handlers
-    document.getElementById("rect-color").addEventListener("input", (e) => {
-      document.getElementById("rect-color-preview").style.backgroundColor =
-        e.target.value;
-    });
-    document.getElementById("round-color").addEventListener("input", (e) => {
-      document.getElementById("round-color-preview").style.backgroundColor =
-        e.target.value;
-    });
-  }
-
-  initDragAndDrop() {
-    const draggableItems = document.querySelectorAll(".draggable-item");
-
-    draggableItems.forEach((item) => {
-      item.addEventListener("dragstart", (e) => {
-        e.dataTransfer.setData("objectType", item.dataset.objectType);
-      });
-
-      // Make items draggable
-      item.setAttribute("draggable", "true");
-    });
-
-    // Handle drag over scene
-    const sceneContainer = document.getElementById("scene-container");
-
-    sceneContainer.addEventListener("dragover", (e) => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = "copy";
-    });
-
-    // Handle drop on scene
-    sceneContainer.addEventListener("drop", (e) => {
-      e.preventDefault();
-      const objectType = e.dataTransfer.getData("objectType");
-
-      // Calculate drop position in 3D space using raycasting
-      const rect = sceneContainer.getBoundingClientRect();
-      const x = ((e.clientX - rect.left) / sceneContainer.offsetWidth) * 2 - 1;
-      const y = -((e.clientY - rect.top) / sceneContainer.offsetHeight) * 2 + 1;
-
-      this.createObjectAtPosition(objectType, x, y);
-    });
-
-    // Initialize drag controls for 3D objects
-    this.initDragControls();
   }
 
   createObjectAtPosition(objectType, screenX, screenY) {
@@ -268,6 +285,8 @@ class Dashboard {
 
   initDragControls() {
     // Create drag controls
+    if (!this.camera || !this.renderer || !this.renderer.domElement) return;
+
     this.dragControls = new DragControls(
       this.draggableObjects,
       this.camera,
@@ -437,6 +456,8 @@ class Dashboard {
 
   updateObjectList() {
     const objectList = document.getElementById("object-list");
+    if (!objectList) return;
+
     objectList.innerHTML = "";
 
     // Add tables
@@ -459,6 +480,7 @@ class Dashboard {
 
   addObjectToList(object, name) {
     const objectList = document.getElementById("object-list");
+    if (!objectList) return;
 
     const listItem = document.createElement("li");
     listItem.className =
@@ -519,77 +541,87 @@ class Dashboard {
   }
 
   showObjectProperties(object) {
+    const noSelectionMsg = document.getElementById("no-selection-message");
+    const propertyEditor = document.getElementById("property-editor");
+    const rectTableProps = document.getElementById("rectangular-table-props");
+    const roundTableProps = document.getElementById("round-table-props");
+    const seatProps = document.getElementById("seat-props");
+
+    if (!noSelectionMsg || !propertyEditor) return;
+
     if (!object) {
-      document
-        .getElementById("no-selection-message")
-        .classList.remove("hidden");
-      document.getElementById("property-editor").classList.add("hidden");
+      noSelectionMsg.classList.remove("hidden");
+      propertyEditor.classList.add("hidden");
       return;
     }
 
-    document.getElementById("no-selection-message").classList.add("hidden");
-    document.getElementById("property-editor").classList.remove("hidden");
+    noSelectionMsg.classList.add("hidden");
+    propertyEditor.classList.remove("hidden");
 
     // Hide all property groups
-    document.getElementById("rectangular-table-props").classList.add("hidden");
-    document.getElementById("round-table-props").classList.add("hidden");
-    document.getElementById("seat-props").classList.add("hidden");
+    if (rectTableProps) rectTableProps.classList.add("hidden");
+    if (roundTableProps) roundTableProps.classList.add("hidden");
+    if (seatProps) seatProps.classList.add("hidden");
 
     // Set common properties
-    document.getElementById("object-name").value = object.userData?.name || "";
+    const nameInput = document.getElementById("object-name");
+    if (nameInput) nameInput.value = object.userData?.name || "";
 
     // Show relevant property group
-    if (object.userData?.type === "rectangularTable") {
+    if (object.userData?.type === "rectangularTable" && rectTableProps) {
       // Show rectangular table properties
-      document
-        .getElementById("rectangular-table-props")
-        .classList.remove("hidden");
+      rectTableProps.classList.remove("hidden");
 
       // Set values
-      document.getElementById("rect-width").value =
-        object.userData?.width || 1.5;
-      document.getElementById("rect-length").value =
-        object.userData?.length || 2;
-      document.getElementById("rect-height").value =
-        object.userData?.height || 0.75;
+      const widthInput = document.getElementById("rect-width");
+      const lengthInput = document.getElementById("rect-length");
+      const heightInput = document.getElementById("rect-height");
+      const colorInput = document.getElementById("rect-color");
+      const colorPreview = document.getElementById("rect-color-preview");
+
+      if (widthInput) widthInput.value = object.userData?.width || 1.5;
+      if (lengthInput) lengthInput.value = object.userData?.length || 2;
+      if (heightInput) heightInput.value = object.userData?.height || 0.75;
 
       const color = object.mesh?.material.color;
-      if (color) {
+      if (color && colorInput && colorPreview) {
         const hexColor = "#" + color.getHexString();
-        document.getElementById("rect-color").value = hexColor;
-        document.getElementById("rect-color-preview").style.backgroundColor =
-          hexColor;
+        colorInput.value = hexColor;
+        colorPreview.style.backgroundColor = hexColor;
       }
 
       // Update seats list
       this.updateSeatsList("rectangular", object);
-    } else if (object.userData?.type === "roundTable") {
+    } else if (object.userData?.type === "roundTable" && roundTableProps) {
       // Show round table properties
-      document.getElementById("round-table-props").classList.remove("hidden");
+      roundTableProps.classList.remove("hidden");
 
       // Set values
-      document.getElementById("round-radius").value =
-        object.userData?.radius || 1;
-      document.getElementById("round-height").value =
-        object.userData?.height || 0.75;
+      const radiusInput = document.getElementById("round-radius");
+      const heightInput = document.getElementById("round-height");
+      const colorInput = document.getElementById("round-color");
+      const colorPreview = document.getElementById("round-color-preview");
+
+      if (radiusInput) radiusInput.value = object.userData?.radius || 1;
+      if (heightInput) heightInput.value = object.userData?.height || 0.75;
 
       const color = object.mesh?.material.color;
-      if (color) {
+      if (color && colorInput && colorPreview) {
         const hexColor = "#" + color.getHexString();
-        document.getElementById("round-color").value = hexColor;
-        document.getElementById("round-color-preview").style.backgroundColor =
-          hexColor;
+        colorInput.value = hexColor;
+        colorPreview.style.backgroundColor = hexColor;
       }
 
       // Update seats list
       this.updateSeatsList("round", object);
-    } else if (object.userData?.type === "seat") {
+    } else if (object.userData?.type === "seat" && seatProps) {
       // Show seat properties
-      document.getElementById("seat-props").classList.remove("hidden");
+      seatProps.classList.remove("hidden");
 
       // Set values
-      document.getElementById("person-name").value =
-        object.userData?.personName || "";
+      const personNameInput = document.getElementById("person-name");
+      if (personNameInput)
+        personNameInput.value = object.userData?.personName || "";
     }
   }
 
@@ -599,6 +631,8 @@ class Dashboard {
         ? "rect-seats-container"
         : "round-seats-container";
     const container = document.getElementById(containerId);
+    if (!container) return;
+
     container.innerHTML = "";
 
     if (
@@ -674,6 +708,7 @@ class Dashboard {
     });
   }
 
+  // Rest of methods unchanged...
   addSeatToTable(tableType) {
     if (
       !this.selectedObject ||
@@ -782,15 +817,22 @@ class Dashboard {
     const type = this.selectedObject.userData?.type;
 
     // Update common properties
-    this.selectedObject.userData.name =
-      document.getElementById("object-name").value;
+    const nameInput = document.getElementById("object-name");
+    if (nameInput) this.selectedObject.userData.name = nameInput.value;
 
     if (type === "rectangularTable") {
       // Update rectangular table properties
-      const width = parseFloat(document.getElementById("rect-width").value);
-      const length = parseFloat(document.getElementById("rect-length").value);
-      const height = parseFloat(document.getElementById("rect-height").value);
-      const color = document.getElementById("rect-color").value;
+      const widthInput = document.getElementById("rect-width");
+      const lengthInput = document.getElementById("rect-length");
+      const heightInput = document.getElementById("rect-height");
+      const colorInput = document.getElementById("rect-color");
+
+      if (!widthInput || !lengthInput || !heightInput || !colorInput) return;
+
+      const width = parseFloat(widthInput.value);
+      const length = parseFloat(lengthInput.value);
+      const height = parseFloat(heightInput.value);
+      const color = colorInput.value;
 
       // Store original values
       this.selectedObject.userData.width = width;
@@ -830,9 +872,15 @@ class Dashboard {
       this.updateTableSeatsPositions(this.selectedObject);
     } else if (type === "roundTable") {
       // Update round table properties
-      const radius = parseFloat(document.getElementById("round-radius").value);
-      const height = parseFloat(document.getElementById("round-height").value);
-      const color = document.getElementById("round-color").value;
+      const radiusInput = document.getElementById("round-radius");
+      const heightInput = document.getElementById("round-height");
+      const colorInput = document.getElementById("round-color");
+
+      if (!radiusInput || !heightInput || !colorInput) return;
+
+      const radius = parseFloat(radiusInput.value);
+      const height = parseFloat(heightInput.value);
+      const color = colorInput.value;
 
       // Store original values
       this.selectedObject.userData.radius = radius;
@@ -871,7 +919,10 @@ class Dashboard {
       this.updateTableSeatsPositions(this.selectedObject);
     } else if (type === "seat") {
       // Update seat properties
-      const personName = document.getElementById("person-name").value;
+      const personNameInput = document.getElementById("person-name");
+      if (!personNameInput) return;
+
+      const personName = personNameInput.value;
       this.selectedObject.userData.personName = personName;
 
       // Update person above seat if needed
