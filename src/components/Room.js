@@ -31,13 +31,28 @@ class Room {
   }
 
   addRectangularTable(x, z, width, length) {
-    const table = new RectangularTable(width, length);
+    // Create the geometry and material...
+    const mesh = new THREE.Mesh(geometry, material);
 
-    // Only set position after table is fully constructed
-    table.position.set(x, 0, z);
+    // Force matrix world update
+    mesh.position.set(x, height / 2, z);
+    mesh.updateMatrix();
+    mesh.updateMatrixWorld(true); // Force update matrixWorld
+
+    // Set userData
+    mesh.userData = { type: "rectangularTable" };
+
+    // Add to scene
+    this.scene.add(mesh);
+
+    // Create the object to return
+    const table = {
+      mesh: mesh,
+      position: new THREE.Vector3(x, 0, z),
+      userData: mesh.userData,
+    };
 
     this.tables.push(table);
-    // REMOVE: table.render(this.scene); - We'll render it in the render() method instead
     return table;
   }
 

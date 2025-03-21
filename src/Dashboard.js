@@ -13,7 +13,12 @@ class Dashboard {
     this.dragPlaceholder = null;
     this.dragControls = null;
     this.draggableObjects = [];
+    this.useSafeDragControls = true;
 
+    // Make dashboard accessible globally for debugging
+    window._dashboard = this;
+
+    console.log("Dashboard initialized");
     this.init();
   }
 
@@ -21,15 +26,216 @@ class Dashboard {
     this.safeAddEventListener("create-room-btn", "click", () =>
       this.createRoom()
     );
-
-    // Add toggle button handler
     this.safeAddEventListener("toggle-dashboard", "click", () =>
       this.toggleDashboard()
     );
-
     this.initDashboard();
     this.initDragAndDrop();
     this.initObjectManipulation();
+    this.addClickToAddFunctionality();
+  }
+
+  // NEW: Add click-to-add functionality for easier object creation
+  addClickToAddFunctionality() {
+    const draggableItems = document.querySelectorAll(".draggable-item");
+    console.log(
+      `Setting up click handlers for ${draggableItems.length} draggable items`
+    );
+
+    draggableItems.forEach((item) => {
+      item.addEventListener("click", () => {
+        const objectType = item.dataset.objectType;
+        console.log(`Click to add ${objectType}`);
+
+        // Add the object to the center of the room
+        this.addObjectAtCenterPosition(objectType);
+      });
+    });
+  }
+
+  // NEW: Add object at center of room (helper for click-to-add)
+  addObjectAtCenterPosition(objectType) {
+    console.log(`Adding ${objectType} at center position`);
+    try {
+      let object;
+
+      // Create object based on type
+      switch (objectType) {
+        case "rectangularTable":
+          object = this.createRectTableAtPosition(0, 0, 1.5, 2);
+          break;
+
+        case "roundTable":
+          object = this.createRoundTableAtPosition(0, 0, 1);
+          break;
+
+        case "seat":
+          object = this.createSeatAtPosition(0, 0);
+          break;
+      }
+
+      // Add to scene and make draggable
+      if (object && object.mesh) {
+        // Force a render cycle to ensure object is properly initialized
+        this.renderer.render(this.scene, this.camera);
+
+        // Wait briefly to ensure object is initialized properly in Three.js
+        setTimeout(() => {
+          // Double check that the mesh is valid before adding
+          if (object.mesh && object.mesh.matrixWorld) {
+            this.draggableObjects.push(object.mesh);
+
+            // Update controls
+            try {
+              this.updateDragControls();
+            } catch (err) {
+              console.warn("Error updating drag controls:", err);
+            }
+
+            this.updateObjectList();
+            this.selectObject(object);
+            console.log(`Successfully created ${objectType} at center`);
+          }
+        }, 100);
+
+        // Show dashboard to see the new object
+        this.showDashboard();
+      } else {
+        console.error(`Failed to create ${objectType}`);
+      }
+    } catch (error) {
+      console.error("Error adding object at center:", error);
+    }
+  }
+
+  // Helper methods to create objects without depending on Room.js implementation
+  createRectTableAtPosition(x, z, width, length) {
+    try {
+      // Create geometry and material directly
+      const height = 0.75;
+      const geometry = new THREE.BoxGeometry(width, height, length);
+      const material = new THREE.MeshStandardMaterial({
+        color: 0x8b4513,
+        emissive: 0x000000,
+      });
+
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.position.set(x, height / 2, z);
+      mesh.updateMatrix();
+      mesh.updateMatrixWorld(true);
+
+      mesh.userData = {
+        type: "rectangularTable",
+        name: `Table ${this.objectCounter++}`,
+        seats: [],
+        width: width,
+        length: length,
+        height: height,
+      };
+
+      // Add to scene
+      this.scene.add(mesh);
+
+      // Create the object to return
+      const table = {
+        mesh: mesh,
+        position: new THREE.Vector3(x, 0, z),
+        userData: mesh.userData,
+      };
+
+      this.room.tables.push(table);
+      return table;
+    } catch (error) {
+      console.error("Error creating rectangular table:", error);
+      return null;
+    }
+  }
+
+  createRoundTableAtPosition(x, z, radius) {
+    try {
+      // Create geometry and material directly
+      const height = 0.75;
+      const geometry = new THREE.CylinderGeometry(radius, radius, height, 32);
+      const material = new THREE.MeshStandardMaterial({
+        color: 0x8b4513,
+        emissive: 0x000000,
+      });
+
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.position.set(x, height / 2, z);
+      mesh.updateMatrix();
+      mesh.updateMatrixWorld(true);
+
+      mesh.userData = {
+        type: "roundTable",
+        name: `Round Table ${this.objectCounter++}`,
+        seats: [],
+        radius: radius,
+        height: height,
+      };
+
+      // Add to scene
+      this.scene.add(mesh);
+
+      // Create the object to return
+      const table = {
+        mesh: mesh,
+        position: new THREE.Vector3(x, 0, z),
+        userData: mesh.userData,
+      };
+
+      this.room.tables.push(table);
+      return table;
+    } catch (error) {
+      console.error("Error creating round table:", error);
+      return null;
+    }
+  }
+
+  createSeatAtPosition(x, z) {
+    try {
+      // Create geometry and material directly
+      const height = 0.5;
+      const radius = 0.25;
+      const geometry = new THREE.CylinderGeometry(radius, radius, height, 16);
+      const material = new THREE.MeshStandardMaterial({
+        color: 0x333333,
+        emissive: 0x000000,
+      });
+
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.position.set(x, height / 2, z);
+      mesh.updateMatrix();
+      mesh.updateMatrixWorld(true);
+
+      mesh.userData = {
+        type: "seat",
+        name: `Seat ${this.objectCounter++}`,
+        personName: "",
+        height: height,
+      };
+
+      // Generate a unique ID for the seat
+      const seatId = Date.now();
+      mesh.userData.id = seatId;
+
+      // Add to scene
+      this.scene.add(mesh);
+
+      // Create the object to return
+      const seat = {
+        mesh: mesh,
+        position: new THREE.Vector3(x, 0, z),
+        userData: mesh.userData,
+        id: seatId,
+      };
+
+      this.room.seats.push(seat);
+      return seat;
+    } catch (error) {
+      console.error("Error creating seat:", error);
+      return null;
+    }
   }
 
   // Toggle dashboard method
@@ -133,35 +339,55 @@ class Dashboard {
   }
 
   initDragAndDrop() {
+    console.log("Initializing drag and drop");
     const draggableItems = document.querySelectorAll(".draggable-item");
+    console.log(`Found ${draggableItems.length} draggable items`);
 
     draggableItems.forEach((item) => {
       item.addEventListener("dragstart", (e) => {
+        console.log(`Dragging started: ${item.dataset.objectType}`);
         e.dataTransfer.setData("objectType", item.dataset.objectType);
       });
 
       // Make items draggable
       item.setAttribute("draggable", "true");
+      console.log(`Made item draggable: ${item.dataset.objectType}`);
     });
 
     // Handle drag over scene
     const sceneContainer = document.getElementById("scene-container");
-    if (!sceneContainer) return;
+    if (!sceneContainer) {
+      console.error("Scene container not found!");
+      return;
+    }
 
     sceneContainer.addEventListener("dragover", (e) => {
       e.preventDefault();
       e.dataTransfer.dropEffect = "copy";
+      sceneContainer.classList.add("drag-over");
+    });
+
+    sceneContainer.addEventListener("dragleave", () => {
+      sceneContainer.classList.remove("drag-over");
     });
 
     // Handle drop on scene
     sceneContainer.addEventListener("drop", (e) => {
       e.preventDefault();
+      sceneContainer.classList.remove("drag-over");
+
       const objectType = e.dataTransfer.getData("objectType");
+      console.log(`Drop received for ${objectType}`);
+
+      if (!objectType) {
+        console.error("No object type in drop data");
+        return;
+      }
 
       // Calculate drop position in 3D space using raycasting
       const rect = sceneContainer.getBoundingClientRect();
-      const x = ((e.clientX - rect.left) / sceneContainer.offsetWidth) * 2 - 1;
-      const y = -((e.clientY - rect.top) / sceneContainer.offsetHeight) * 2 + 1;
+      const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      const y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
 
       this.createObjectAtPosition(objectType, x, y);
     });
@@ -228,115 +454,138 @@ class Dashboard {
   }
 
   createObjectAtPosition(objectType, screenX, screenY) {
-    // Use raycasting to find the intersection with the floor plane
-    const raycaster = new THREE.Raycaster();
-    const mouse = new THREE.Vector2(screenX, screenY);
-    raycaster.setFromCamera(mouse, this.camera);
+    console.log(
+      `Creating object of type ${objectType} at screen position (${screenX}, ${screenY})`
+    );
 
-    const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-    const intersection = new THREE.Vector3();
-    raycaster.ray.intersectPlane(floorPlane, intersection);
+    try {
+      // Use raycasting to find the intersection with the floor plane
+      const raycaster = new THREE.Raycaster();
+      const mouse = new THREE.Vector2(screenX, screenY);
+      raycaster.setFromCamera(mouse, this.camera);
 
-    let object;
+      // Create a horizontal plane at y=0 for intersection
+      const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+      const intersection = new THREE.Vector3();
 
-    // Create object based on type
-    switch (objectType) {
-      case "rectangularTable":
-        object = this.room.addRectangularTable(
-          intersection.x,
-          intersection.z,
-          1.5,
-          2
-        );
-        object.userData = {
-          type: "rectangularTable",
-          name: `Table ${this.objectCounter++}`,
-          seats: [],
-        };
-        break;
+      const didIntersect = raycaster.ray.intersectPlane(
+        floorPlane,
+        intersection
+      );
 
-      case "roundTable":
-        object = this.room.addRoundTable(intersection.x, intersection.z, 1);
-        object.userData = {
-          type: "roundTable",
-          name: `Round Table ${this.objectCounter++}`,
-          seats: [],
-        };
-        break;
+      if (!didIntersect) {
+        console.warn("Raycasting failed, using default position");
+        // Use default position if raycasting fails
+        intersection.set(0, 0, 0);
+      }
 
-      case "seat":
-        object = this.room.addSeat(intersection.x, intersection.z);
-        object.userData = {
-          type: "seat",
-          name: `Seat ${this.objectCounter++}`,
-          personName: "",
-        };
-        break;
-    }
+      console.log(
+        `World position: (${intersection.x}, ${intersection.y}, ${intersection.z})`
+      );
 
-    // Add to scene and make draggable
-    if (object && object.mesh) {
-      this.draggableObjects.push(object.mesh);
-      this.updateDragControls();
-      this.updateObjectList();
-      this.selectObject(object);
+      let object;
+
+      // Create object based on type
+      switch (objectType) {
+        case "rectangularTable":
+          object = this.createRectTableAtPosition(
+            intersection.x,
+            intersection.z,
+            1.5,
+            2
+          );
+          break;
+
+        case "roundTable":
+          object = this.createRoundTableAtPosition(
+            intersection.x,
+            intersection.z,
+            1
+          );
+          break;
+
+        case "seat":
+          object = this.createSeatAtPosition(intersection.x, intersection.z);
+          break;
+      }
+
+      // Add to scene and make draggable
+      if (object && object.mesh) {
+        // Make sure object mesh is valid before adding to draggable objects
+        if (object.mesh.type && object.mesh.matrixWorld !== undefined) {
+          this.draggableObjects.push(object.mesh);
+          this.updateDragControls();
+          this.updateObjectList();
+          this.selectObject(object);
+          console.log(`Successfully created ${objectType}`);
+
+          // Show dashboard to see the new object
+          this.showDashboard();
+        } else {
+          console.error(
+            `Created ${objectType} but mesh is invalid for drag controls`
+          );
+        }
+      } else {
+        console.error(`Failed to create ${objectType} object`);
+      }
+    } catch (error) {
+      console.error("Error in createObjectAtPosition:", error);
     }
   }
 
   initDragControls() {
-    // Create drag controls
     if (!this.camera || !this.renderer || !this.renderer.domElement) return;
-
-    this.dragControls = new DragControls(
-      this.draggableObjects,
-      this.camera,
-      this.renderer.domElement
-    );
-
-    // Constrain to XZ plane
-    this.dragControls.addEventListener("drag", (event) => {
-      const object = event.object;
-      object.position.y = object.userData.height / 2 || 0.5; // Keep at original height
-
-      // Constrain to room bounds
-      const halfWidth = this.room.width / 2;
-      const halfLength = this.room.length / 2;
-
-      let objWidth = 0,
-        objLength = 0;
-
-      if (object.userData.type === "rectangularTable") {
-        objWidth = object.userData.width / 2 || 0.75;
-        objLength = object.userData.length / 2 || 1;
-      } else if (object.userData.type === "roundTable") {
-        objWidth = objLength = object.userData.radius || 0.5;
-      } else if (object.userData.type === "seat") {
-        objWidth = objLength = 0.25;
+    try {
+      console.log("Initializing drag controls");
+      this.cleanupDraggableObjects();
+      if (this.draggableObjects.length === 0) {
+        console.warn("No objects to drag");
+        return;
       }
-
-      object.position.x = Math.max(
-        -halfWidth + objWidth,
-        Math.min(halfWidth - objWidth, object.position.x)
-      );
-      object.position.z = Math.max(
-        -halfLength + objLength,
-        Math.min(halfLength - objLength, object.position.z)
-      );
-
-      // Update object data
-      this.updateObjectPosition(object);
-    });
-  }
-
-  updateDragControls() {
-    // Update the objects for drag controls
-    if (this.dragControls) {
-      this.dragControls.dispose();
       this.dragControls = new DragControls(
         this.draggableObjects,
         this.camera,
         this.renderer.domElement
       );
+      this.setupDragControlHandlers();
+
+      // If useSafeDragControls flag is set, patch the events
+      if (this.useSafeDragControls) {
+        this.patchDragControlsEvents();
+      }
+
+      console.log("Drag controls initialized successfully");
+    } catch (error) {
+      console.error("Error initializing drag controls:", error);
+    }
+  }
+
+  updateDragControls() {
+    try {
+      // Clean up invalid objects first
+      this.cleanupDraggableObjects();
+
+      if (this.dragControls) {
+        this.dragControls.dispose();
+
+        // Create new drag controls
+        this.dragControls = new DragControls(
+          this.draggableObjects,
+          this.camera,
+          this.renderer.domElement
+        );
+
+        // Set up event handlers
+        this.setupDragControlHandlers();
+
+        // If useSafeDragControls flag is set, patch the events
+        if (this.useSafeDragControls) {
+          this.patchDragControlsEvents();
+        }
+      }
+    } catch (error) {
+      console.error("Error updating drag controls:", error);
     }
   }
 
@@ -708,7 +957,6 @@ class Dashboard {
     });
   }
 
-  // Rest of methods unchanged...
   addSeatToTable(tableType) {
     if (
       !this.selectedObject ||
@@ -731,20 +979,11 @@ class Dashboard {
       offsetX = this.selectedObject.userData?.radius + 0.3 || 1.3;
     }
 
-    const seat = this.room.addSeat(tablePosition.x + offsetX, tablePosition.z);
-    seat.userData = {
-      type: "seat",
-      name: `Seat ${this.objectCounter++}`,
-      personName: "",
-    };
-
-    seat.id = Date.now(); // Unique ID for referencing
-
-    // Add to draggable objects
-    if (seat.mesh) {
-      this.draggableObjects.push(seat.mesh);
-      this.updateDragControls();
-    }
+    const seat = this.createSeatAtPosition(
+      tablePosition.x + offsetX,
+      tablePosition.z
+    );
+    if (!seat) return;
 
     // Add to table's seats list
     if (!this.selectedObject.userData.seats) {
@@ -789,6 +1028,162 @@ class Dashboard {
         ? "rectangular"
         : "round";
     this.updateSeatsList(tableType, tableObject);
+  }
+
+  cleanupDraggableObjects() {
+    console.log(`Before cleanup: ${this.draggableObjects.length} objects`);
+
+    // Filter out null and undefined objects
+    this.draggableObjects = this.draggableObjects.filter((obj) => {
+      // Check if the object is valid
+      const isValid =
+        obj &&
+        obj.type &&
+        typeof obj.matrixWorld !== "undefined" &&
+        obj.userData;
+
+      if (!isValid) {
+        console.log("Removing invalid object from draggable objects array");
+      }
+
+      return isValid;
+    });
+
+    console.log(`After cleanup: ${this.draggableObjects.length} objects`);
+  }
+
+  setupDragControlHandlers() {
+    if (!this.dragControls) return;
+
+    // Constrain to XZ plane
+    this.dragControls.addEventListener("drag", (event) => {
+      try {
+        const object = event.object;
+        if (!object) return;
+
+        object.position.y = object.userData?.height / 2 || 0.5; // Keep at original height
+
+        // Constrain to room bounds
+        const halfWidth = this.room.width / 2;
+        const halfLength = this.room.length / 2;
+
+        let objWidth = 0,
+          objLength = 0;
+
+        if (object.userData?.type === "rectangularTable") {
+          objWidth = object.userData.width / 2 || 0.75;
+          objLength = object.userData.length / 2 || 1;
+        } else if (object.userData?.type === "roundTable") {
+          objWidth = objLength = object.userData.radius || 0.5;
+        } else if (object.userData?.type === "seat") {
+          objWidth = objLength = 0.25;
+        }
+
+        object.position.x = Math.max(
+          -halfWidth + objWidth,
+          Math.min(halfWidth - objWidth, object.position.x)
+        );
+        object.position.z = Math.max(
+          -halfLength + objLength,
+          Math.min(halfLength - objLength, object.position.z)
+        );
+
+        // Update object data
+        this.updateObjectPosition(object);
+      } catch (error) {
+        console.error("Error in drag event handler:", error);
+      }
+    });
+
+    // Add these safety handlers
+    this.dragControls.addEventListener("dragstart", () => {
+      // Disable camera controls when dragging objects
+      if (window.orbitControls) {
+        window.orbitControls.enabled = false;
+      }
+    });
+
+    this.dragControls.addEventListener("dragend", () => {
+      // Re-enable camera controls after dragging
+      if (window.orbitControls) {
+        window.orbitControls.enabled = true;
+      }
+    });
+  }
+
+  fixDragControlsMatrixWorldError() {
+    console.log("Applying DragControls fix");
+
+    try {
+      // Clean up any invalid objects in the draggable objects array
+      this.cleanupDraggableObjects();
+
+      // If we already have drag controls, patch their event handlers
+      if (this.dragControls) {
+        this.patchDragControlsEvents();
+      }
+
+      // Make sure future drag controls are also patched
+      this.useSafeDragControls = true;
+    } catch (e) {
+      console.error("Error fixing drag controls:", e);
+    }
+  }
+
+  patchDragControlsEvents() {
+    if (!this.dragControls) return;
+
+    // Store original event handlers
+    const originalHandlers = this.dragControls._listeners || {};
+
+    // Replace with safe versions
+    const safeHandler = (eventName, originalHandler) => {
+      return function (event) {
+        try {
+          return originalHandler.call(this, event);
+        } catch (error) {
+          console.warn(`Prevented error in ${eventName}:`, error.message);
+          return false;
+        }
+      };
+    };
+
+    // Remove all existing listeners
+    this.dragControls.removeEventListener("drag");
+    this.dragControls.removeEventListener("dragstart");
+    this.dragControls.removeEventListener("dragend");
+    this.dragControls.removeEventListener("hoveron");
+    this.dragControls.removeEventListener("hoveroff");
+
+    // Re-add with safe wrappers
+    if (originalHandlers.drag) {
+      for (const handler of originalHandlers.drag) {
+        this.dragControls.addEventListener(
+          "drag",
+          safeHandler("drag", handler)
+        );
+      }
+    }
+
+    if (originalHandlers.dragstart) {
+      for (const handler of originalHandlers.dragstart) {
+        this.dragControls.addEventListener(
+          "dragstart",
+          safeHandler("dragstart", handler)
+        );
+      }
+    }
+
+    if (originalHandlers.dragend) {
+      for (const handler of originalHandlers.dragend) {
+        this.dragControls.addEventListener(
+          "dragend",
+          safeHandler("dragend", handler)
+        );
+      }
+    }
+
+    console.log("DragControls events patched with error handlers");
   }
 
   removeSeatFromTable(tableObject, seatId) {
@@ -945,7 +1340,6 @@ class Dashboard {
 
   deleteSelectedObject() {
     if (!this.selectedObject) return;
-
     this.deleteObject(this.selectedObject);
   }
 

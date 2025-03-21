@@ -64,6 +64,40 @@
         }
       }
     </style>
+    <!-- Additional custom styles -->
+    <style>
+      /* Visual feedback for drag operations */
+      #scene-container.drag-over {
+        box-shadow: inset 0 0 0 4px #3b82f6;
+        transition: box-shadow 0.2s ease;
+      }
+
+      .draggable-item {
+        transition: transform 0.1s ease, box-shadow 0.1s ease;
+      }
+
+      .draggable-item:active {
+        transform: scale(0.98);
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+      }
+
+      /* Pulse effect for emergency button to make it more noticeable */
+      @keyframes pulse {
+        0% {
+          box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+        }
+        70% {
+          box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+        }
+        100% {
+          box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+        }
+      }
+
+      #emergency-show {
+        animation: pulse 2s infinite;
+      }
+    </style>
   </head>
   <body class="bg-gray-100 font-sans m-0 p-0 overflow-hidden">
     <!-- Room Setup Modal -->
@@ -239,17 +273,180 @@
 
             <!-- Rectangular Table Properties -->
             <div id="rectangular-table-props" class="hidden space-y-3">
-              <!-- ... Rectangular table properties ... -->
+              <div>
+                <label
+                  for="rect-width"
+                  class="block text-sm font-medium text-gray-700 mb-1"
+                  >Width (meters):</label
+                >
+                <input
+                  type="number"
+                  id="rect-width"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  min="0.5"
+                  step="0.1"
+                />
+              </div>
+
+              <div>
+                <label
+                  for="rect-length"
+                  class="block text-sm font-medium text-gray-700 mb-1"
+                  >Length (meters):</label
+                >
+                <input
+                  type="number"
+                  id="rect-length"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  min="0.5"
+                  step="0.1"
+                />
+              </div>
+
+              <div>
+                <label
+                  for="rect-height"
+                  class="block text-sm font-medium text-gray-700 mb-1"
+                  >Height (meters):</label
+                >
+                <input
+                  type="number"
+                  id="rect-height"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  min="0.2"
+                  step="0.1"
+                />
+              </div>
+
+              <div>
+                <label
+                  for="rect-color"
+                  class="block text-sm font-medium text-gray-700 mb-1"
+                  >Color:</label
+                >
+                <div class="flex items-center space-x-2">
+                  <input
+                    type="color"
+                    id="rect-color"
+                    class="w-10 h-10 border-0 p-0"
+                  />
+                  <div
+                    id="rect-color-preview"
+                    class="w-10 h-10 border border-gray-300 rounded"
+                  ></div>
+                </div>
+              </div>
+
+              <!-- Seats Section -->
+              <div>
+                <div class="flex justify-between items-center mb-2">
+                  <label class="block text-sm font-medium text-gray-700"
+                    >Seats:</label
+                  >
+                  <button
+                    id="add-rect-seat-btn"
+                    class="text-xs bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded"
+                  >
+                    Add Seat
+                  </button>
+                </div>
+                <div
+                  id="rect-seats-container"
+                  class="bg-gray-50 p-2 rounded border border-gray-200 text-sm max-h-40 overflow-y-auto"
+                >
+                  <!-- Seats will be added here dynamically -->
+                </div>
+              </div>
             </div>
 
             <!-- Round Table Properties -->
             <div id="round-table-props" class="hidden space-y-3">
-              <!-- ... Round table properties ... -->
+              <div>
+                <label
+                  for="round-radius"
+                  class="block text-sm font-medium text-gray-700 mb-1"
+                  >Radius (meters):</label
+                >
+                <input
+                  type="number"
+                  id="round-radius"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  min="0.3"
+                  step="0.1"
+                />
+              </div>
+
+              <div>
+                <label
+                  for="round-height"
+                  class="block text-sm font-medium text-gray-700 mb-1"
+                  >Height (meters):</label
+                >
+                <input
+                  type="number"
+                  id="round-height"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  min="0.2"
+                  step="0.1"
+                />
+              </div>
+
+              <div>
+                <label
+                  for="round-color"
+                  class="block text-sm font-medium text-gray-700 mb-1"
+                  >Color:</label
+                >
+                <div class="flex items-center space-x-2">
+                  <input
+                    type="color"
+                    id="round-color"
+                    class="w-10 h-10 border-0 p-0"
+                  />
+                  <div
+                    id="round-color-preview"
+                    class="w-10 h-10 border border-gray-300 rounded"
+                  ></div>
+                </div>
+              </div>
+
+              <!-- Seats Section -->
+              <div>
+                <div class="flex justify-between items-center mb-2">
+                  <label class="block text-sm font-medium text-gray-700"
+                    >Seats:</label
+                  >
+                  <button
+                    id="add-round-seat-btn"
+                    class="text-xs bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded"
+                  >
+                    Add Seat
+                  </button>
+                </div>
+                <div
+                  id="round-seats-container"
+                  class="bg-gray-50 p-2 rounded border border-gray-200 text-sm max-h-40 overflow-y-auto"
+                >
+                  <!-- Seats will be added here dynamically -->
+                </div>
+              </div>
             </div>
 
             <!-- Seat Properties -->
             <div id="seat-props" class="hidden space-y-3">
-              <!-- ... Seat properties ... -->
+              <div>
+                <label
+                  for="person-name"
+                  class="block text-sm font-medium text-gray-700 mb-1"
+                  >Person Name:</label
+                >
+                <input
+                  type="text"
+                  id="person-name"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="Enter person's name"
+                />
+              </div>
             </div>
 
             <!-- Update Button -->
@@ -378,7 +575,7 @@
           console.log("Dashboard shown after room creation using brute force");
         });
 
-      // Emergency button for forcing dashboard visibility (can be removed once everything works)
+      // Emergency button for forcing dashboard visibility with animation
       document
         .getElementById("emergency-show")
         .addEventListener("click", function () {
@@ -404,6 +601,85 @@
 
           console.log("Emergency dashboard toggle triggered");
         });
+
+      // NEW: Add click-to-add functionality for draggable items
+      document.querySelectorAll(".draggable-item").forEach((item) => {
+        item.addEventListener("click", function () {
+          const objectType = this.dataset.objectType;
+          console.log(`Click to add ${objectType}`);
+
+          try {
+            // Access the dashboard instance from the window object
+            if (window._dashboard) {
+              window._dashboard.addObjectAtCenterPosition(objectType);
+              console.log(`Added ${objectType} at center position`);
+            } else {
+              console.warn(
+                "Dashboard instance not accessible via window._dashboard"
+              );
+              // Fallback - show message to user
+              alert(
+                `To add a ${objectType}, please drag and drop it onto the scene.`
+              );
+            }
+          } catch (error) {
+            console.error("Error adding object:", error);
+          }
+        });
+      });
+
+      // NEW: Add visual feedback for drag-and-drop operations
+      const sceneContainer = document.getElementById("scene-container");
+
+      // Make sure scene can receive drag events with visual feedback
+      if (sceneContainer) {
+        sceneContainer.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "copy";
+          sceneContainer.classList.add("drag-over");
+        });
+
+        sceneContainer.addEventListener("dragleave", () => {
+          sceneContainer.classList.remove("drag-over");
+        });
+
+        sceneContainer.addEventListener("drop", () => {
+          sceneContainer.classList.remove("drag-over");
+        });
+      }
+    </script>
+
+    <script>
+      // Fix for DragControls matrixWorld error
+      // This will run once after the page is loaded
+      window.addEventListener("load", function () {
+        setTimeout(() => {
+          // If Dashboard is initialized
+          if (window._dashboard) {
+            // Clean up null references in draggable objects array
+            window._dashboard.cleanupDraggableObjects();
+          }
+        }, 1000); // Wait a short time for everything to initialize
+      });
+    </script>
+
+    <!-- Add this right before the closing body tag -->
+    <script>
+      // Fix for DragControls error without accessing THREE directly
+      document.addEventListener("DOMContentLoaded", function () {
+        // Wait for everything to load
+        setTimeout(() => {
+          // Access dashboard through the global reference
+          if (window._dashboard) {
+            console.log("Found dashboard instance, applying DragControls fix");
+            window._dashboard.fixDragControlsMatrixWorldError();
+          } else {
+            console.warn(
+              "Dashboard not available in window._dashboard, can't apply fixes"
+            );
+          }
+        }, 1000);
+      });
     </script>
   </body>
 </html>
