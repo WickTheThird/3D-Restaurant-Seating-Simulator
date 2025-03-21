@@ -1,9 +1,9 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import SceneManager from "./utils/SceneManager";
 import Room from "./components/Room";
+import Dashboard from "./Dashboard";
 
-// Check WebGL support first
+// Check WebGL support
 function webglAvailable() {
   try {
     const canvas = document.createElement("canvas");
@@ -17,26 +17,18 @@ function webglAvailable() {
 }
 
 // Create container for the scene
-const container = document.getElementById("app") || document.body;
+const container = document.getElementById("scene-container") || document.body;
 
 // Display error message if WebGL isn't available
 if (!webglAvailable()) {
   const warning = document.createElement("div");
-  warning.style.position = "absolute";
-  warning.style.top = "50%";
-  warning.style.left = "50%";
-  warning.style.transform = "translate(-50%, -50%)";
-  warning.style.textAlign = "center";
-  warning.style.padding = "20px";
-  warning.style.background = "rgba(255,0,0,0.6)";
-  warning.style.color = "white";
-  warning.style.fontFamily = "Arial, sans-serif";
-  warning.style.borderRadius = "5px";
+  warning.className =
+    "p-6 bg-red-600 text-white rounded shadow-lg absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center max-w-lg";
   warning.innerHTML = `
-    <h2>WebGL Not Available</h2>
-    <p>Your browser or device doesn't support WebGL, which is required for the 3D restaurant simulator.</p>
-    <p>Please try:</p>
-    <ul style="text-align: left;">
+    <h2 class="text-xl font-bold mb-4">WebGL Not Available</h2>
+    <p class="mb-3">Your browser or device doesn't support WebGL, which is required for the 3D restaurant simulator.</p>
+    <p class="mb-2">Please try:</p>
+    <ul class="text-left list-disc pl-6 mb-3">
       <li>Using a modern browser like Chrome, Firefox, Edge, or Safari</li>
       <li>Enabling hardware acceleration in your browser settings</li>
       <li>Updating your graphics drivers</li>
@@ -51,8 +43,8 @@ if (!webglAvailable()) {
   } catch (error) {
     console.error("Error initializing WebGL scene:", error);
     const errorMessage = document.createElement("div");
-    errorMessage.style.color = "red";
-    errorMessage.style.padding = "20px";
+    errorMessage.className =
+      "p-6 bg-red-600 text-white rounded shadow-lg absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2";
     errorMessage.textContent =
       "Failed to initialize 3D scene. Error: " + error.message;
     container.appendChild(errorMessage);
@@ -60,10 +52,11 @@ if (!webglAvailable()) {
 }
 
 function initScene() {
-  // Initialize scene, camera, renderer
+  // Initialize scene
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0xf0f0f0);
 
+  // Initialize camera
   const camera = new THREE.PerspectiveCamera(
     75,
     window.innerWidth / window.innerHeight,
@@ -72,15 +65,15 @@ function initScene() {
   );
   camera.position.set(5, 5, 10);
 
-  // Try with explicit WebGL1 if WebGL2 fails
+  // Initialize renderer
   const renderer = new THREE.WebGLRenderer({
     antialias: true,
     powerPreference: "default",
     failIfMajorPerformanceCaveat: false,
-    canvas: document.createElement("canvas"),
   });
 
   renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(window.devicePixelRatio);
   container.appendChild(renderer.domElement);
 
   // Add lights
@@ -96,25 +89,25 @@ function initScene() {
   controls.enableDamping = true;
   controls.dampingFactor = 0.05;
 
-  // Create grid helper for reference
+  // Create grid helper
   const gridHelper = new THREE.GridHelper(20, 20);
   scene.add(gridHelper);
 
-  // Create room and objects
+  // Create room with default dimensions (will be updated by dashboard)
   const room = new Room(10, 10, 3);
   room.render(scene);
 
-  const table1 = room.addRectangularTable(-2, -2, 2, 1);
-  const table2 = room.addRoundTable(2, 2, 1);
-  const seat = room.addSeat(0, 0);
-  room.addPerson("Guest", seat);
+  // Initialize dashboard
+  const dashboard = new Dashboard(scene, camera, renderer, room);
 
+  // Handle window resize
   window.addEventListener("resize", () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
 
+  // Animation loop
   function animate() {
     requestAnimationFrame(animate);
     controls.update();

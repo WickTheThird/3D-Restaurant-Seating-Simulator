@@ -1,19 +1,222 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Restaurant 3D Simulator</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Restaurant 3D Simulator</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#3b82f6',
+            secondary: '#64748b',
+            danger: '#ef4444',
+            success: '#22c55e',
+          }
         }
-    </style>
+      }
+    }
+  </script>
+  <style type="text/tailwind">
+    @layer utilities {
+      .drag-handle {
+        cursor: grab;
+      }
+      .drag-handle:active {
+        cursor: grabbing;
+      }
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+    }
+  </style>
 </head>
-<body>
-    <div id="app"></div>
-    <script src="bundle.js"></script>
+<body class="bg-gray-100 font-sans m-0 p-0 overflow-hidden">
+  <!-- Room Setup Modal -->
+  <div id="room-setup-modal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+    <div class="bg-white rounded-lg p-8 w-96 shadow-xl">
+      <h2 class="text-2xl font-bold mb-6">Restaurant Room Setup</h2>
+      
+      <div class="mb-4">
+        <label for="room-width" class="block text-sm font-medium text-gray-700 mb-1">Width (meters):</label>
+        <input type="number" id="room-width" value="10" min="1" step="0.1" 
+               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+      </div>
+      
+      <div class="mb-4">
+        <label for="room-length" class="block text-sm font-medium text-gray-700 mb-1">Length (meters):</label>
+        <input type="number" id="room-length" value="10" min="1" step="0.1" 
+               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+      </div>
+      
+      <div class="mb-6">
+        <label for="room-height" class="block text-sm font-medium text-gray-700 mb-1">Height (meters):</label>
+        <input type="number" id="room-height" value="3" min="1" step="0.1" 
+               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+      </div>
+      
+      <button id="create-room-btn" class="w-full py-2 px-4 bg-primary text-white font-semibold rounded-md hover:bg-primary-dark transition-colors">
+        Create Room
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Application Layout -->
+  <div class="flex h-screen">
+    <!-- 3D Scene Container -->
+    <div id="scene-container" class="flex-1 bg-black"></div>
+    
+    <!-- Dashboard Sidebar -->
+    <div id="dashboard" class="w-80 bg-white shadow-lg overflow-y-auto no-scrollbar h-full hidden">
+      <!-- Add Objects Section -->
+      <div class="p-4 border-b border-gray-200">
+        <h2 class="text-lg font-bold mb-3">Add Objects</h2>
+        <div class="grid grid-cols-2 gap-2">
+          <div class="draggable-item bg-gray-100 hover:bg-gray-200 p-3 rounded shadow-sm text-center cursor-pointer drag-handle" 
+               data-object-type="rectangularTable">
+            <div class="text-sm font-medium">Rectangular Table</div>
+          </div>
+          <div class="draggable-item bg-gray-100 hover:bg-gray-200 p-3 rounded shadow-sm text-center cursor-pointer drag-handle" 
+               data-object-type="roundTable">
+            <div class="text-sm font-medium">Round Table</div>
+          </div>
+          <div class="draggable-item bg-gray-100 hover:bg-gray-200 p-3 rounded shadow-sm text-center cursor-pointer drag-handle" 
+               data-object-type="seat">
+            <div class="text-sm font-medium">Seat</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Objects List Section -->
+      <div class="p-4 border-b border-gray-200">
+        <h2 class="text-lg font-bold mb-3">Objects</h2>
+        <ul id="object-list" class="space-y-1">
+          <!-- Object list items will be dynamically added here -->
+        </ul>
+      </div>
+      
+      <!-- Properties Editor Section -->
+      <div class="p-4">
+        <h2 class="text-lg font-bold mb-3">Properties</h2>
+        
+        <!-- No Selection Message -->
+        <div id="no-selection-message" class="text-gray-500 italic">
+          No object selected
+        </div>
+        
+        <!-- Property Editor (hidden initially) -->
+        <div id="property-editor" class="hidden">
+          <!-- Common Properties -->
+          <div class="mb-4">
+            <label for="object-name" class="block text-sm font-medium text-gray-700 mb-1">Name:</label>
+            <input type="text" id="object-name" 
+                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+          </div>
+          
+          <!-- Rectangular Table Properties -->
+          <div id="rectangular-table-props" class="hidden space-y-3">
+            <div>
+              <label for="rect-width" class="block text-sm font-medium text-gray-700 mb-1">Width (m):</label>
+              <input type="number" id="rect-width" min="0.1" step="0.1" value="1.5" 
+                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+            </div>
+            
+            <div>
+              <label for="rect-length" class="block text-sm font-medium text-gray-700 mb-1">Length (m):</label>
+              <input type="number" id="rect-length" min="0.1" step="0.1" value="2" 
+                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+            </div>
+            
+            <div>
+              <label for="rect-height" class="block text-sm font-medium text-gray-700 mb-1">Height (m):</label>
+              <input type="number" id="rect-height" min="0.1" step="0.1" value="0.75" 
+                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+            </div>
+            
+            <div>
+              <label for="rect-color" class="block text-sm font-medium text-gray-700 mb-1">Color:</label>
+              <div class="flex items-center">
+                <input type="color" id="rect-color" value="#8B4513" 
+                       class="h-8 w-10 border border-gray-300 rounded-md mr-2">
+                <span id="rect-color-preview" class="block w-6 h-6 border border-gray-300 rounded"></span>
+              </div>
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Seats:</label>
+              <div id="rect-seats-container" class="border border-gray-300 rounded-md p-2 max-h-40 overflow-y-auto">
+                <!-- Seats will be added here -->
+              </div>
+              <button id="add-rect-seat-btn" class="mt-2 py-1 px-3 bg-primary text-white text-xs rounded-md hover:bg-primary-dark">
+                Add Seat
+              </button>
+            </div>
+          </div>
+          
+          <!-- Round Table Properties -->
+          <div id="round-table-props" class="hidden space-y-3">
+            <div>
+              <label for="round-radius" class="block text-sm font-medium text-gray-700 mb-1">Radius (m):</label>
+              <input type="number" id="round-radius" min="0.1" step="0.1" value="1" 
+                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+            </div>
+            
+            <div>
+              <label for="round-height" class="block text-sm font-medium text-gray-700 mb-1">Height (m):</label>
+              <input type="number" id="round-height" min="0.1" step="0.1" value="0.75" 
+                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+            </div>
+            
+            <div>
+              <label for="round-color" class="block text-sm font-medium text-gray-700 mb-1">Color:</label>
+              <div class="flex items-center">
+                <input type="color" id="round-color" value="#8B4513" 
+                       class="h-8 w-10 border border-gray-300 rounded-md mr-2">
+                <span id="round-color-preview" class="block w-6 h-6 border border-gray-300 rounded"></span>
+              </div>
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Seats:</label>
+              <div id="round-seats-container" class="border border-gray-300 rounded-md p-2 max-h-40 overflow-y-auto">
+                <!-- Seats will be added here -->
+              </div>
+              <button id="add-round-seat-btn" class="mt-2 py-1 px-3 bg-primary text-white text-xs rounded-md hover:bg-primary-dark">
+                Add Seat
+              </button>
+            </div>
+          </div>
+          
+          <!-- Seat Properties -->
+          <div id="seat-props" class="hidden space-y-3">
+            <div>
+              <label for="person-name" class="block text-sm font-medium text-gray-700 mb-1">Person Name:</label>
+              <input type="text" id="person-name" placeholder="Leave empty for no person" 
+                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+            </div>
+          </div>
+          
+          <!-- Update Button -->
+          <div class="mt-6 flex justify-end space-x-2">
+            <button id="update-object-btn" class="py-2 px-4 bg-success text-white font-medium rounded-md hover:bg-green-600 transition-colors">
+              Update
+            </button>
+            <button id="delete-object-btn" class="py-2 px-4 bg-danger text-white font-medium rounded-md hover:bg-red-600 transition-colors">
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="bundle.js"></script>
 </body>
 </html>
