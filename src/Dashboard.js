@@ -30,6 +30,8 @@ class Dashboard {
 
     console.log("Dashboard initialized");
     this.init();
+    this.animate = this.animate.bind(this);
+    this.animate();
   }
 
   init() {
@@ -45,6 +47,19 @@ class Dashboard {
     this.handleClickForObject = this.handleClickForObject.bind(this);
     this.initObjectManipulation();
     this.addClickToAddFunctionality();
+
+    const sceneContainer = document.getElementById("scene-container");
+    if (sceneContainer) {
+      sceneContainer.style.position = "relative";
+      sceneContainer.style.overflow = "hidden";
+    }
+  }
+
+  animate() {
+    requestAnimationFrame(this.animate);
+
+    // Update all label positions
+    this.updateAllLabels();
   }
 
   // NEW: Add click-to-add functionality for easier object creation
@@ -157,6 +172,7 @@ class Dashboard {
       };
 
       this.room.tables.push(table);
+      this.updateObjectLabel(table);
       return table;
     } catch (error) {
       console.error("Error creating rectangular table:", error);
@@ -244,6 +260,8 @@ class Dashboard {
       };
 
       this.room.seats.push(seat);
+      this.updateObjectLabel(seat);
+
       return seat;
     } catch (error) {
       console.error("Error creating seat:", error);
@@ -307,6 +325,21 @@ class Dashboard {
     this.room.length = length;
     this.room.height = height;
 
+    // Cleanup all existing labels
+    this.room.tables.forEach((table) => {
+      if (table.label && table.label.parentNode) {
+        table.label.parentNode.removeChild(table.label);
+        delete table.label;
+      }
+    });
+
+    this.room.seats.forEach((seat) => {
+      if (seat.label && seat.label.parentNode) {
+        seat.label.parentNode.removeChild(seat.label);
+        delete seat.label;
+      }
+    });
+
     // Recreate room mesh with new dimensions
     this.scene.remove(this.room.roomMesh);
     this.room.roomMesh = this.room.createRoomMesh();
@@ -337,6 +370,7 @@ class Dashboard {
     // Handle color inputs safely
     this.safeAddColorInputHandler("rect-color", "rect-color-preview");
     this.safeAddColorInputHandler("round-color", "round-color-preview");
+    this.updateObjectLabel(this.selectedObject);
   }
 
   // Helper method for color input handlers
@@ -542,6 +576,109 @@ class Dashboard {
     } catch (error) {
       console.error("Error in createObjectAtPosition:", error);
     }
+  }
+
+  updateObjectLabel(object) {
+    if (!object || !object.mesh) return;
+
+    // Get the appropriate name to display
+    let displayName = "";
+    if (object.userData?.type === "seat") {
+      // For seats, show the person name if available
+      displayName = object.userData?.personName || "";
+    } else {
+      // For tables, show the table name
+      displayName = object.userData?.name || "";
+    }
+
+    // If there's no name to display, remove any existing label
+    if (!displayName) {
+      if (object.label) {
+        // Remove existing label if there is one
+        if (object.label.parentNode) {
+          object.label.parentNode.removeChild(object.label);
+        }
+        delete object.label;
+      }
+      return;
+    }
+
+    // Create or update label
+    if (!object.label) {
+      // Create new label
+      object.label = document.createElement("div");
+      object.label.className = "object-label";
+      object.label.style.position = "absolute";
+      object.label.style.color = "white";
+      object.label.style.fontSize = "14px";
+      object.label.style.fontWeight = "bold";
+      object.label.style.padding = "4px 8px";
+      object.label.style.borderRadius = "4px";
+      object.label.style.backgroundColor = "rgba(0,0,0,0.5)";
+      object.label.style.pointerEvents = "none"; // Don't interfere with mouse events
+      object.label.style.transform = "translate(-50%, -50%)";
+      object.label.style.zIndex = "10";
+      object.label.style.textAlign = "center";
+      object.label.style.whiteSpace = "nowrap";
+      document.getElementById("scene-container").appendChild(object.label);
+    }
+
+    // Update label content
+    object.label.textContent = displayName;
+
+    // Update label position (we'll do this in the animation loop)
+    this.updateLabelPosition(object);
+  }
+
+  updateLabelPosition(object) {
+    if (!object || !object.mesh || !object.label) return;
+
+    // Calculate position above the object
+    const position = object.mesh.position.clone();
+
+    // Add height offset - position above the object
+    let labelHeight = 0;
+    if (object.userData?.type === "seat") {
+      labelHeight = (object.userData?.height || 0.5) + 0.3; // Higher for better visibility
+    } else if (
+      object.userData?.type === "rectangularTable" ||
+      object.userData?.type === "roundTable"
+    ) {
+      labelHeight = (object.userData?.height || 0.75) + 0.2;
+    }
+    position.y += labelHeight;
+
+    // Project 3D position to 2D screen coordinates
+    const vector = position.project(this.camera);
+
+    // Convert to CSS coordinates
+    const widthHalf = window.innerWidth / 2;
+    const heightHalf = window.innerHeight / 2;
+    const x = vector.x * widthHalf + widthHalf;
+    const y = -(vector.y * heightHalf) + heightHalf;
+
+    // Apply position to label
+    object.label.style.left = `${x}px`;
+    object.label.style.top = `${y}px`;
+
+    // Visibility check - hide when behind the camera
+    if (vector.z > 1) {
+      object.label.style.display = "none";
+    } else {
+      object.label.style.display = "block";
+    }
+  }
+
+  updateAllLabels() {
+    // Update table labels
+    this.room.tables.forEach((table) => {
+      this.updateObjectLabel(table);
+    });
+
+    // Update seat labels
+    this.room.seats.forEach((seat) => {
+      this.updateObjectLabel(seat);
+    });
   }
 
   initDragControls() {
@@ -851,6 +988,20 @@ class Dashboard {
         this.movingObject.userData.seats.length > 0
       ) {
         this.updateTableSeatsPositions(this.movingObject);
+      }
+
+      if (this.movingObject) {
+        this.updateLabelPosition(this.movingObject);
+
+        // If this is a table with seats, update seat label positions too
+        if (this.movingObject.userData?.seats) {
+          this.movingObject.userData.seats.forEach((seatId) => {
+            const seat = this.room.seats.find((s) => s.id === seatId);
+            if (seat) {
+              this.updateLabelPosition(seat);
+            }
+          });
+        }
       }
     }
   };
@@ -1630,6 +1781,14 @@ class Dashboard {
     // If this was the selected object, deselect
     if (this.selectedObject === object) {
       this.selectObject(null);
+    }
+
+    // If it has a labler remove it
+    if (object.label) {
+      if (object.label.parentNode) {
+        object.label.parentNode.removeChild(object.label);
+      }
+      delete object.label;
     }
 
     // Update UI
