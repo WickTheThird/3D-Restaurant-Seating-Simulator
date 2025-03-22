@@ -15,8 +15,18 @@ class Dashboard {
     this.draggableObjects = [];
     this.useSafeDragControls = true;
 
+    this.movingObject = null;
+    this.raycaster = new THREE.Raycaster();
+    this.mouse = new THREE.Vector2();
+    this.movePlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+
     // Make dashboard accessible globally for debugging
     window._dashboard = this;
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && this.movingObject) {
+        this.stopObjectMove();
+      }
+    });
 
     console.log("Dashboard initialized");
     this.init();
@@ -31,6 +41,8 @@ class Dashboard {
     );
     this.initDashboard();
     this.initDragAndDrop();
+    this.handleMouseMoveForObject = this.handleMouseMoveForObject.bind(this);
+    this.handleClickForObject = this.handleClickForObject.bind(this);
     this.initObjectManipulation();
     this.addClickToAddFunctionality();
   }
@@ -744,6 +756,17 @@ class Dashboard {
     const actions = document.createElement("div");
     actions.className = "flex space-x-1";
 
+    // Add Move button
+    const moveBtn = document.createElement("button");
+    moveBtn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5"></path></svg>`;
+    moveBtn.className = "text-green-500 hover:text-green-700 p-1";
+    moveBtn.title = "Move object";
+    moveBtn.addEventListener("click", (e) => {
+      e.stopPropagation(); // Prevent triggering selectObject
+      this.startObjectMove(object);
+    });
+
+    // Existing buttons
     const editBtn = document.createElement("button");
     editBtn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>`;
     editBtn.className = "text-blue-500 hover:text-blue-700 p-1";
@@ -754,6 +777,8 @@ class Dashboard {
     deleteBtn.className = "text-red-500 hover:text-red-700 p-1";
     deleteBtn.addEventListener("click", () => this.deleteObject(object));
 
+    // Add buttons to actions
+    actions.appendChild(moveBtn);
     actions.appendChild(editBtn);
     actions.appendChild(deleteBtn);
 
@@ -761,6 +786,225 @@ class Dashboard {
     listItem.appendChild(actions);
 
     objectList.appendChild(listItem);
+  }
+
+  handleMouseMoveForObject = (event) => {
+    if (!this.movingObject) return;
+
+    // Get mouse position in normalized device coordinates
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+    // Update raycaster with mouse position
+    this.raycaster.setFromCamera(this.mouse, this.camera);
+
+    // Calculate intersection with movement plane
+    const intersection = new THREE.Vector3();
+    if (this.raycaster.ray.intersectPlane(this.movePlane, intersection)) {
+      // Apply room boundary constraints
+      const halfWidth = this.room.width / 2;
+      const halfLength = this.room.length / 2;
+
+      // Determine object size for boundary checks
+      let objSize = 0.5; // Default size
+      if (this.movingObject.mesh && this.movingObject.mesh.userData) {
+        if (this.movingObject.mesh.userData.type === "rectangularTable") {
+          const width = this.movingObject.mesh.userData.width || 1.5;
+          const length = this.movingObject.mesh.userData.length || 2;
+          objSize = Math.max(width, length) / 2;
+        } else if (this.movingObject.mesh.userData.type === "roundTable") {
+          objSize = this.movingObject.mesh.userData.radius || 1;
+        } else if (this.movingObject.mesh.userData.type === "seat") {
+          objSize = 0.25;
+        }
+      }
+
+      // Constrain position within room bounds
+      intersection.x = Math.max(
+        -halfWidth + objSize,
+        Math.min(halfWidth - objSize, intersection.x)
+      );
+      intersection.z = Math.max(
+        -halfLength + objSize,
+        Math.min(halfLength - objSize, intersection.z)
+      );
+
+      // Move the object using its own move method if available
+      if (
+        this.movingObject.move &&
+        typeof this.movingObject.move === "function"
+      ) {
+        this.movingObject.move(intersection.x, intersection.z);
+      } else if (this.room.moveObject) {
+        // Fallback to room's moveObject method
+        this.room.moveObject(this.movingObject, intersection.x, intersection.z);
+      }
+
+      // Update attached seats if this is a table
+      if (
+        this.movingObject.mesh &&
+        (this.movingObject.mesh.userData.type === "rectangularTable" ||
+          this.movingObject.mesh.userData.type === "roundTable") &&
+        this.movingObject.userData &&
+        this.movingObject.userData.seats &&
+        this.movingObject.userData.seats.length > 0
+      ) {
+        this.updateTableSeatsPositions(this.movingObject);
+      }
+    }
+  };
+
+  startObjectMove(object) {
+    console.log("Starting object movement:", object);
+
+    // If we have a previously moving object, stop it
+    if (this.movingObject) {
+      this.stopObjectMove();
+    }
+
+    // Store reference to the object
+    this.movingObject = object;
+
+    // Disable orbit controls
+    if (window.orbitControls) {
+      this.previousOrbitEnabled = window.orbitControls.enabled;
+      window.orbitControls.enabled = false;
+      console.log("Disabling orbit controls for movement");
+    }
+
+    // Call the object's startMoving method if available
+    if (object.startMoving && typeof object.startMoving === "function") {
+      object.startMoving();
+    } else if (
+      object.mesh &&
+      object.mesh.material &&
+      object.mesh.material.emissive
+    ) {
+      // Fallback if startMoving not available
+      object._originalEmissive = object.mesh.material.emissive.clone();
+      object.mesh.material.emissive.set(0x555555);
+    }
+
+    // Change cursor to indicate move mode
+    document.body.style.cursor = "move";
+
+    // Show movement indicator
+    this.showMoveIndicator();
+
+    // Add event listeners for movement
+    document.addEventListener("mousemove", this.handleMouseMoveForObject);
+    document.addEventListener("click", this.handleClickForObject);
+  }
+
+  handleClickForObject = (event) => {
+    // Only process left clicks
+    if (event.button !== 0) return;
+
+    // Stop object movement when clicked
+    if (this.movingObject) {
+      this.stopObjectMove();
+
+      // Prevent this click from triggering other interactions
+      event.stopPropagation();
+    }
+  };
+
+  stopObjectMove() {
+    if (!this.movingObject) return;
+
+    console.log("Stopping object movement");
+
+    // Remove event listeners
+    document.removeEventListener("mousemove", this.handleMouseMoveForObject);
+    document.removeEventListener("click", this.handleClickForObject);
+
+    // Call the object's stopMoving method if available
+    if (
+      this.movingObject.stopMoving &&
+      typeof this.movingObject.stopMoving === "function"
+    ) {
+      this.movingObject.stopMoving();
+    } else if (
+      this.movingObject.mesh &&
+      this.movingObject.mesh.material &&
+      this.movingObject._originalEmissive
+    ) {
+      // Fallback if stopMoving not available
+      this.movingObject.mesh.material.emissive.copy(
+        this.movingObject._originalEmissive
+      );
+      delete this.movingObject._originalEmissive;
+    }
+
+    // Re-enable orbit controls
+    if (window.orbitControls && this.previousOrbitEnabled !== undefined) {
+      window.orbitControls.enabled = this.previousOrbitEnabled;
+      console.log("Restoring orbit controls:", this.previousOrbitEnabled);
+      this.previousOrbitEnabled = undefined;
+    }
+
+    // Restore cursor
+    document.body.style.cursor = "default";
+
+    // Hide movement indicator
+    this.hideMoveIndicator();
+
+    // Clear reference
+    this.movingObject = null;
+  }
+
+  showMoveIndicator() {
+    // Create or show the movement indicator
+    let moveIndicator = document.getElementById("move-indicator");
+    if (!moveIndicator) {
+      moveIndicator = document.createElement("div");
+      moveIndicator.id = "move-indicator";
+      moveIndicator.style.position = "fixed";
+      moveIndicator.style.bottom = "20px";
+      moveIndicator.style.left = "50%";
+      moveIndicator.style.transform = "translateX(-50%)";
+      moveIndicator.style.backgroundColor = "#3b82f6";
+      moveIndicator.style.color = "white";
+      moveIndicator.style.padding = "8px 16px";
+      moveIndicator.style.borderRadius = "4px";
+      moveIndicator.style.fontWeight = "bold";
+      moveIndicator.style.zIndex = "9999";
+      moveIndicator.style.display = "flex";
+      moveIndicator.style.alignItems = "center";
+      moveIndicator.style.gap = "8px";
+
+      const icon = document.createElement("span");
+      icon.innerHTML = "⬇️";
+
+      const text = document.createElement("span");
+      text.textContent = "Moving object - click to place";
+
+      const cancelBtn = document.createElement("button");
+      cancelBtn.textContent = "Cancel";
+      cancelBtn.style.marginLeft = "8px";
+      cancelBtn.style.padding = "4px 8px";
+      cancelBtn.style.backgroundColor = "rgba(255,255,255,0.2)";
+      cancelBtn.style.border = "none";
+      cancelBtn.style.borderRadius = "3px";
+      cancelBtn.style.cursor = "pointer";
+      cancelBtn.onclick = () => this.stopObjectMove();
+
+      moveIndicator.appendChild(icon);
+      moveIndicator.appendChild(text);
+      moveIndicator.appendChild(cancelBtn);
+
+      document.body.appendChild(moveIndicator);
+    } else {
+      moveIndicator.style.display = "flex";
+    }
+  }
+
+  hideMoveIndicator() {
+    const moveIndicator = document.getElementById("move-indicator");
+    if (moveIndicator) {
+      moveIndicator.style.display = "none";
+    }
   }
 
   selectObject(object) {

@@ -30,39 +30,17 @@ class Room {
     return roomMesh;
   }
 
-  addRectangularTable(x, z, width, length) {
-    // Create the geometry and material...
-    const mesh = new THREE.Mesh(geometry, material);
-
-    // Force matrix world update
-    mesh.position.set(x, height / 2, z);
-    mesh.updateMatrix();
-    mesh.updateMatrixWorld(true); // Force update matrixWorld
-
-    // Set userData
-    mesh.userData = { type: "rectangularTable" };
-
-    // Add to scene
-    this.scene.add(mesh);
-
-    // Create the object to return
-    const table = {
-      mesh: mesh,
-      position: new THREE.Vector3(x, 0, z),
-      userData: mesh.userData,
-    };
-
+  addRectangularTable(x, z, width, length, height = 0.75) {
+    const table = new RectangularTable(width, length, height);
+    table.position.set(x, 0, z);
     this.tables.push(table);
     return table;
   }
 
-  addRoundTable(x, z, radius) {
-    const table = new RoundTable(radius);
-
+  addRoundTable(x, z, radius, height = 0.75) {
+    const table = new RoundTable(radius, height);
     table.position.set(x, 0, z);
-
     this.tables.push(table);
-    // REMOVE: table.render(this.scene); - We'll render it in the render() method instead
     return table;
   }
 
@@ -77,6 +55,83 @@ class Room {
     const person = new Person(name, seat.position);
     this.people.push(person);
     return person;
+  }
+
+
+  moveObject(object, x, z) {
+    if (!object) return false;
+
+    // Update the position
+    object.position.x = x;
+    object.position.z = z;
+
+    // If the object has a mesh property, update that as well
+    if (object.mesh) {
+      object.mesh.position.x = x;
+      object.mesh.position.z = z;
+
+      // Force matrix world update
+      object.mesh.updateMatrix();
+      object.mesh.updateMatrixWorld(true);
+    }
+
+    // If object has a specific move method, call it
+    if (typeof object.move === "function") {
+      object.move(x, z);
+    }
+
+    // If it's a person, update their seat position as well
+    if (object instanceof Person && object.seat) {
+      object.seat.position.x = x;
+      object.seat.position.z = z;
+    }
+
+    return true;
+  }
+
+  /**
+   * Find an object by its ID
+   * @param {string} id - The object ID to find
+   * @returns {Object|null} - The found object or null
+   */
+  findObjectById(id) {
+    // Look in tables
+    const table = this.tables.find((t) => t.id === id);
+    if (table) return table;
+
+    // Look in seats
+    const seat = this.seats.find((s) => s.id === id);
+    if (seat) return seat;
+
+    // Look in people
+    const person = this.people.find((p) => p.id === id);
+    if (person) return person;
+
+    return null;
+  }
+
+  moveObjectById(id, x, z) {
+    const object = this.findObjectById(id);
+    if (!object) return false;
+
+    return this.moveObject(object, x, z);
+  }
+
+  isValidPosition(x, z, radius = 0.5, excludeObject = null) {
+    // Check room bounds (accounting for radius)
+    if (
+      x - radius < -this.width / 2 ||
+      x + radius > this.width / 2 ||
+      z - radius < -this.length / 2 ||
+      z + radius > this.length / 2
+    ) {
+      return false;
+    }
+
+    // Check collisions with other objects
+    // (This would be more sophisticated in a real implementation)
+
+    return true;
   }
 
   render(scene) {
