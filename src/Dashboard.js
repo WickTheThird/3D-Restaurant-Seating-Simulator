@@ -53,6 +53,8 @@ class Dashboard {
       sceneContainer.style.position = "relative";
       sceneContainer.style.overflow = "hidden";
     }
+
+    this.createMiniMap();
   }
 
   animate() {
@@ -60,6 +62,9 @@ class Dashboard {
 
     // Update all label positions
     this.updateAllLabels();
+
+    //updateMiniMap
+    this.updateMiniMap();
   }
 
   // NEW: Add click-to-add functionality for easier object creation
@@ -1794,6 +1799,248 @@ class Dashboard {
     // Update UI
     this.updateObjectList();
     this.updateDragControls();
+  }
+
+  createMiniMap() {
+    // Create container for mini-map
+    const miniMapContainer = document.createElement("div");
+    miniMapContainer.id = "mini-map-container";
+    miniMapContainer.style.position = "fixed";
+    miniMapContainer.style.top = "10px";
+    miniMapContainer.style.left = "10px";
+    miniMapContainer.style.width = "200px";
+    miniMapContainer.style.height = "200px";
+    miniMapContainer.style.backgroundColor = "rgba(0, 0, 0, 0.6)";
+    miniMapContainer.style.border = "2px solid white";
+    miniMapContainer.style.borderRadius = "4px";
+    miniMapContainer.style.overflow = "hidden";
+    miniMapContainer.style.zIndex = "1000";
+    miniMapContainer.style.boxShadow = "0 2px 10px rgba(0, 0, 0, 0.3)";
+
+    // Create canvas for drawing
+    const canvas = document.createElement("canvas");
+    canvas.id = "mini-map";
+    canvas.width = 200;
+    canvas.height = 200;
+    canvas.style.width = "100%";
+    canvas.style.height = "100%";
+    miniMapContainer.appendChild(canvas);
+
+    // Add title
+    const title = document.createElement("div");
+    title.style.position = "absolute";
+    title.style.top = "5px";
+    title.style.left = "10px";
+    title.style.color = "white";
+    title.style.fontSize = "12px";
+    title.style.fontWeight = "bold";
+    title.style.opacity = "0.8";
+    miniMapContainer.appendChild(title);
+
+    // Add toggle button
+    const toggleBtn = document.createElement("button");
+    toggleBtn.innerHTML = "−";
+    toggleBtn.style.position = "absolute";
+    toggleBtn.style.top = "3px";
+    toggleBtn.style.right = "3px";
+    toggleBtn.style.width = "18px";
+    toggleBtn.style.height = "18px";
+    toggleBtn.style.lineHeight = "14px";
+    toggleBtn.style.textAlign = "center";
+    toggleBtn.style.color = "white";
+    toggleBtn.style.backgroundColor = "rgba(255, 255, 255, 0.2)";
+    toggleBtn.style.border = "none";
+    toggleBtn.style.borderRadius = "3px";
+    toggleBtn.style.cursor = "pointer";
+    toggleBtn.style.fontSize = "16px";
+    toggleBtn.style.padding = "0";
+
+    let minimized = false;
+    toggleBtn.addEventListener("click", () => {
+      if (minimized) {
+        canvas.style.display = "block";
+        miniMapContainer.style.height = "200px";
+        toggleBtn.innerHTML = "−";
+      } else {
+        canvas.style.display = "none";
+        miniMapContainer.style.height = "24px";
+        toggleBtn.innerHTML = "+";
+      }
+      minimized = !minimized;
+    });
+
+    miniMapContainer.appendChild(toggleBtn);
+
+    // Add to document
+    document.body.appendChild(miniMapContainer);
+
+    // Store reference to canvas and context
+    this.miniMapCanvas = canvas;
+    this.miniMapContext = canvas.getContext("2d");
+  }
+
+  updateMiniMap() {
+    if (!this.miniMapContext || !this.miniMapCanvas) return;
+
+    const ctx = this.miniMapContext;
+    const canvas = this.miniMapCanvas;
+    const width = canvas.width;
+    const height = canvas.height;
+
+    // Clear canvas
+    ctx.clearRect(0, 0, width, height);
+
+    // Draw background
+    ctx.fillStyle = "#333";
+    ctx.fillRect(0, 0, width, height);
+
+    // Calculate scaling factor to fit room in mini-map
+    const roomWidth = this.room.width;
+    const roomLength = this.room.length;
+    const scale = Math.min(
+      (width - 20) / roomWidth,
+      (height - 20) / roomLength
+    );
+
+    // Calculate offsets to center the room
+    const offsetX = width / 2;
+    const offsetZ = height / 2;
+
+    // Draw room boundaries
+    ctx.strokeStyle = "#aaa";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(
+      offsetX - (roomWidth * scale) / 2,
+      offsetZ - (roomLength * scale) / 2,
+      roomWidth * scale,
+      roomLength * scale
+    );
+
+    // Draw tables
+    this.room.tables.forEach((table) => {
+      if (!table.mesh) return;
+
+      const x = table.mesh.position.x * scale + offsetX;
+      const z = table.mesh.position.z * scale + offsetZ;
+
+      if (table.userData?.type === "rectangularTable") {
+        const width = table.userData.width * scale;
+        const length = table.userData.length * scale;
+
+        ctx.fillStyle = "#8b4513";
+        ctx.fillRect(x - width / 2, z - length / 2, width, length);
+        ctx.strokeStyle = "#5a2d0c";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x - width / 2, z - length / 2, width, length);
+      } else if (table.userData?.type === "roundTable") {
+        const radius = table.userData.radius * scale;
+
+        ctx.beginPath();
+        ctx.arc(x, z, radius, 0, Math.PI * 2);
+        ctx.fillStyle = "#8b4513";
+        ctx.fill();
+        ctx.strokeStyle = "#5a2d0c";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+    });
+
+    // Draw seats
+    this.room.seats.forEach((seat) => {
+      if (!seat.mesh) return;
+
+      const x = seat.mesh.position.x * scale + offsetX;
+      const z = seat.mesh.position.z * scale + offsetZ;
+      const radius = 0.25 * scale;
+
+      ctx.beginPath();
+      ctx.arc(x, z, radius, 0, Math.PI * 2);
+
+      // Use different color for seats with assigned people
+      if (seat.userData?.personName) {
+        ctx.fillStyle = "#4CAF50";
+      } else {
+        ctx.fillStyle = "#333";
+      }
+
+      ctx.fill();
+      ctx.strokeStyle = "#666";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    });
+
+    // Draw camera frustum/viewing direction
+    if (this.camera) {
+      const cameraPos = new THREE.Vector3();
+      this.camera.getWorldPosition(cameraPos);
+
+      // Draw camera position
+      const camX = cameraPos.x * scale + offsetX;
+      const camZ = cameraPos.z * scale + offsetZ;
+
+      ctx.fillStyle = "#fff";
+      ctx.beginPath();
+      ctx.arc(camX, camZ, 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Draw camera direction
+      const target = new THREE.Vector3(0, 0, -1).applyQuaternion(
+        this.camera.quaternion
+      );
+      const dirX = target.x * 10 * scale;
+      const dirZ = target.z * 10 * scale;
+
+      ctx.beginPath();
+      ctx.moveTo(camX, camZ);
+      ctx.lineTo(camX + dirX, camZ + dirZ);
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // Draw view cone
+      ctx.beginPath();
+      const angle = 30 * (Math.PI / 180); // 30 degrees in radians
+      const leftAngle = Math.atan2(target.z, target.x) - angle;
+      const rightAngle = Math.atan2(target.z, target.x) + angle;
+
+      ctx.moveTo(camX, camZ);
+      ctx.lineTo(
+        camX + Math.cos(leftAngle) * 15,
+        camZ + Math.sin(leftAngle) * 15
+      );
+      ctx.lineTo(
+        camX + Math.cos(rightAngle) * 15,
+        camZ + Math.sin(rightAngle) * 15
+      );
+      ctx.closePath();
+
+      ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
+      ctx.fill();
+    }
+
+    // Highlight selected object if any
+    if (this.selectedObject && this.selectedObject.mesh) {
+      const x = this.selectedObject.mesh.position.x * scale + offsetX;
+      const z = this.selectedObject.mesh.position.z * scale + offsetZ;
+
+      ctx.strokeStyle = "#ffff00";
+      ctx.lineWidth = 2;
+
+      if (this.selectedObject.userData?.type === "rectangularTable") {
+        const width = this.selectedObject.userData.width * scale;
+        const length = this.selectedObject.userData.length * scale;
+        ctx.strokeRect(x - width / 2, z - length / 2, width, length);
+      } else if (this.selectedObject.userData?.type === "roundTable") {
+        const radius = this.selectedObject.userData.radius * scale;
+        ctx.beginPath();
+        ctx.arc(x, z, radius + 1, 0, Math.PI * 2);
+        ctx.stroke();
+      } else if (this.selectedObject.userData?.type === "seat") {
+        ctx.beginPath();
+        ctx.arc(x, z, 0.25 * scale + 1, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
   }
 }
 
