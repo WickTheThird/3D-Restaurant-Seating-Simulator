@@ -37,6 +37,7 @@
         dashboard.classList.remove("hidden");
         dashboard.style.visibility = "visible";
         dashboard.style.opacity = "1";
+        dashboard.style.transform = "translateX(0)";
         console.log("Dashboard should now be visible");
       };
 
@@ -81,6 +82,48 @@
       .draggable-item:active {
         transform: scale(0.98);
         box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+      }
+
+      /* Dashboard animation */
+      #dashboard {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: 320px;
+        height: 100%;
+        background-color: white;
+        box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+        z-index: 100;
+        transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+        transform: translateX(100%);
+        opacity: 0;
+        overflow-y: auto;
+        pointer-events: none;
+      }
+
+      #dashboard.open {
+        transform: translateX(0);
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      /* Custom scrollbar for the dashboard */
+      #dashboard::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      #dashboard::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+      }
+
+      #dashboard::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 4px;
+      }
+
+      #dashboard::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
       }
 
       /* Pulse effect for emergency button to make it more noticeable */
@@ -172,7 +215,7 @@
       <!-- 3D Scene Container -->
       <div id="scene-container" class="flex-1 bg-black"></div>
 
-      <!-- Dashboard Sidebar - Added close button in header -->
+      <!-- Dashboard Sidebar with improved animation and scrolling -->
       <div
         id="dashboard"
         style="
@@ -184,13 +227,11 @@
           background-color: white;
           box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
           z-index: 100;
-          overflow-y: auto;
-          display: none;
         "
       >
         <!-- Dashboard Header with Close Button -->
         <div
-          class="flex justify-between items-center p-4 border-b border-gray-200 bg-gray-50"
+          class="flex justify-between items-center p-4 border-b border-gray-200 bg-gray-50 sticky top-0 z-10"
         >
           <h1 class="text-xl font-bold text-gray-800">Dashboard</h1>
           <button
@@ -214,259 +255,262 @@
           </button>
         </div>
 
-        <!-- Add Objects Section -->
-        <div class="p-4 border-b border-gray-200">
-          <h2 class="text-lg font-bold mb-3">Add Objects</h2>
-          <div class="grid grid-cols-2 gap-2">
-            <div
-              class="draggable-item bg-gray-100 hover:bg-gray-200 p-3 rounded shadow-sm text-center cursor-pointer drag-handle"
-              data-object-type="rectangularTable"
-              draggable="true"
-            >
-              <div class="text-sm font-medium">Rectangular Table</div>
-            </div>
-            <div
-              class="draggable-item bg-gray-100 hover:bg-gray-200 p-3 rounded shadow-sm text-center cursor-pointer drag-handle"
-              data-object-type="roundTable"
-              draggable="true"
-            >
-              <div class="text-sm font-medium">Round Table</div>
-            </div>
-            <div
-              class="draggable-item bg-gray-100 hover:bg-gray-200 p-3 rounded shadow-sm text-center cursor-pointer drag-handle"
-              data-object-type="seat"
-              draggable="true"
-            >
-              <div class="text-sm font-medium">Seat</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Objects List Section -->
-        <div class="p-4 border-b border-gray-200">
-          <h2 class="text-lg font-bold mb-3">Objects</h2>
-          <ul id="object-list" class="space-y-1">
-            <!-- Object list items will be dynamically added here -->
-          </ul>
-        </div>
-
-        <!-- Properties Editor Section -->
-        <div class="p-4">
-          <h2 class="text-lg font-bold mb-3">Properties</h2>
-
-          <!-- No Selection Message -->
-          <div id="no-selection-message" class="text-gray-500 italic">
-            No object selected
-          </div>
-
-          <!-- Property Editor (hidden initially) -->
-          <div id="property-editor" class="hidden">
-            <!-- Common Properties -->
-            <div class="mb-4">
-              <label
-                for="object-name"
-                class="block text-sm font-medium text-gray-700 mb-1"
-                >Name:</label
+        <!-- Dashboard content wrapper with scrollable area -->
+        <div class="dashboard-content">
+          <!-- Add Objects Section -->
+          <div class="p-4 border-b border-gray-200">
+            <h2 class="text-lg font-bold mb-3">Add Objects</h2>
+            <div class="grid grid-cols-2 gap-2">
+              <div
+                class="draggable-item bg-gray-100 hover:bg-gray-200 p-3 rounded shadow-sm text-center cursor-pointer drag-handle"
+                data-object-type="rectangularTable"
+                draggable="true"
               >
-              <input
-                type="text"
-                id="object-name"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
-
-            <!-- Rectangular Table Properties -->
-            <div id="rectangular-table-props" class="hidden space-y-3">
-              <div>
-                <label
-                  for="rect-width"
-                  class="block text-sm font-medium text-gray-700 mb-1"
-                  >Width (meters):</label
-                >
-                <input
-                  type="number"
-                  id="rect-width"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  min="0.5"
-                  step="0.1"
-                />
+                <div class="text-sm font-medium">Rectangular Table</div>
               </div>
-
-              <div>
-                <label
-                  for="rect-length"
-                  class="block text-sm font-medium text-gray-700 mb-1"
-                  >Length (meters):</label
-                >
-                <input
-                  type="number"
-                  id="rect-length"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  min="0.5"
-                  step="0.1"
-                />
+              <div
+                class="draggable-item bg-gray-100 hover:bg-gray-200 p-3 rounded shadow-sm text-center cursor-pointer drag-handle"
+                data-object-type="roundTable"
+                draggable="true"
+              >
+                <div class="text-sm font-medium">Round Table</div>
               </div>
-
-              <div>
-                <label
-                  for="rect-height"
-                  class="block text-sm font-medium text-gray-700 mb-1"
-                  >Height (meters):</label
-                >
-                <input
-                  type="number"
-                  id="rect-height"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  min="0.2"
-                  step="0.1"
-                />
-              </div>
-
-              <div>
-                <label
-                  for="rect-color"
-                  class="block text-sm font-medium text-gray-700 mb-1"
-                  >Color:</label
-                >
-                <div class="flex items-center space-x-2">
-                  <input
-                    type="color"
-                    id="rect-color"
-                    class="w-10 h-10 border-0 p-0"
-                  />
-                  <div
-                    id="rect-color-preview"
-                    class="w-10 h-10 border border-gray-300 rounded"
-                  ></div>
-                </div>
-              </div>
-
-              <!-- Seats Section -->
-              <div>
-                <div class="flex justify-between items-center mb-2">
-                  <label class="block text-sm font-medium text-gray-700"
-                    >Seats:</label
-                  >
-                  <button
-                    id="add-rect-seat-btn"
-                    class="text-xs bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded"
-                  >
-                    Add Seat
-                  </button>
-                </div>
-                <div
-                  id="rect-seats-container"
-                  class="bg-gray-50 p-2 rounded border border-gray-200 text-sm max-h-40 overflow-y-auto"
-                >
-                  <!-- Seats will be added here dynamically -->
-                </div>
+              <div
+                class="draggable-item bg-gray-100 hover:bg-gray-200 p-3 rounded shadow-sm text-center cursor-pointer drag-handle"
+                data-object-type="seat"
+                draggable="true"
+              >
+                <div class="text-sm font-medium">Seat</div>
               </div>
             </div>
+          </div>
 
-            <!-- Round Table Properties -->
-            <div id="round-table-props" class="hidden space-y-3">
-              <div>
-                <label
-                  for="round-radius"
-                  class="block text-sm font-medium text-gray-700 mb-1"
-                  >Radius (meters):</label
-                >
-                <input
-                  type="number"
-                  id="round-radius"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  min="0.3"
-                  step="0.1"
-                />
-              </div>
+          <!-- Objects List Section -->
+          <div class="p-4 border-b border-gray-200">
+            <h2 class="text-lg font-bold mb-3">Objects</h2>
+            <ul id="object-list" class="space-y-1">
+              <!-- Object list items will be dynamically added here -->
+            </ul>
+          </div>
 
-              <div>
-                <label
-                  for="round-height"
-                  class="block text-sm font-medium text-gray-700 mb-1"
-                  >Height (meters):</label
-                >
-                <input
-                  type="number"
-                  id="round-height"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  min="0.2"
-                  step="0.1"
-                />
-              </div>
+          <!-- Properties Editor Section -->
+          <div class="p-4">
+            <h2 class="text-lg font-bold mb-3">Properties</h2>
 
-              <div>
-                <label
-                  for="round-color"
-                  class="block text-sm font-medium text-gray-700 mb-1"
-                  >Color:</label
-                >
-                <div class="flex items-center space-x-2">
-                  <input
-                    type="color"
-                    id="round-color"
-                    class="w-10 h-10 border-0 p-0"
-                  />
-                  <div
-                    id="round-color-preview"
-                    class="w-10 h-10 border border-gray-300 rounded"
-                  ></div>
-                </div>
-              </div>
-
-              <!-- Seats Section -->
-              <div>
-                <div class="flex justify-between items-center mb-2">
-                  <label class="block text-sm font-medium text-gray-700"
-                    >Seats:</label
-                  >
-                  <button
-                    id="add-round-seat-btn"
-                    class="text-xs bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded"
-                  >
-                    Add Seat
-                  </button>
-                </div>
-                <div
-                  id="round-seats-container"
-                  class="bg-gray-50 p-2 rounded border border-gray-200 text-sm max-h-40 overflow-y-auto"
-                >
-                  <!-- Seats will be added here dynamically -->
-                </div>
-              </div>
+            <!-- No Selection Message -->
+            <div id="no-selection-message" class="text-gray-500 italic">
+              No object selected
             </div>
 
-            <!-- Seat Properties -->
-            <div id="seat-props" class="hidden space-y-3">
-              <div>
+            <!-- Property Editor (hidden initially) -->
+            <div id="property-editor" class="hidden">
+              <!-- Common Properties -->
+              <div class="mb-4">
                 <label
-                  for="person-name"
+                  for="object-name"
                   class="block text-sm font-medium text-gray-700 mb-1"
-                  >Person Name:</label
+                  >Name:</label
                 >
                 <input
                   type="text"
-                  id="person-name"
+                  id="object-name"
                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="Enter person's name"
                 />
               </div>
-            </div>
 
-            <!-- Update Button -->
-            <div class="mt-6 flex justify-end space-x-2">
-              <button
-                id="update-object-btn"
-                class="py-2 px-4 bg-success text-white font-medium rounded-md hover:bg-green-600 transition-colors"
-              >
-                Update
-              </button>
-              <button
-                id="delete-object-btn"
-                class="py-2 px-4 bg-danger text-white font-medium rounded-md hover:bg-red-600 transition-colors"
-              >
-                Delete
-              </button>
+              <!-- Rectangular Table Properties -->
+              <div id="rectangular-table-props" class="hidden space-y-3">
+                <div>
+                  <label
+                    for="rect-width"
+                    class="block text-sm font-medium text-gray-700 mb-1"
+                    >Width (meters):</label
+                  >
+                  <input
+                    type="number"
+                    id="rect-width"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    min="0.5"
+                    step="0.1"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    for="rect-length"
+                    class="block text-sm font-medium text-gray-700 mb-1"
+                    >Length (meters):</label
+                  >
+                  <input
+                    type="number"
+                    id="rect-length"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    min="0.5"
+                    step="0.1"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    for="rect-height"
+                    class="block text-sm font-medium text-gray-700 mb-1"
+                    >Height (meters):</label
+                  >
+                  <input
+                    type="number"
+                    id="rect-height"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    min="0.2"
+                    step="0.1"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    for="rect-color"
+                    class="block text-sm font-medium text-gray-700 mb-1"
+                    >Color:</label
+                  >
+                  <div class="flex items-center space-x-2">
+                    <input
+                      type="color"
+                      id="rect-color"
+                      class="w-10 h-10 border-0 p-0"
+                    />
+                    <div
+                      id="rect-color-preview"
+                      class="w-10 h-10 border border-gray-300 rounded"
+                    ></div>
+                  </div>
+                </div>
+
+                <!-- Seats Section -->
+                <div>
+                  <div class="flex justify-between items-center mb-2">
+                    <label class="block text-sm font-medium text-gray-700"
+                      >Seats:</label
+                    >
+                    <button
+                      id="add-rect-seat-btn"
+                      class="text-xs bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded"
+                    >
+                      Add Seat
+                    </button>
+                  </div>
+                  <div
+                    id="rect-seats-container"
+                    class="bg-gray-50 p-2 rounded border border-gray-200 text-sm max-h-40 overflow-y-auto"
+                  >
+                    <!-- Seats will be added here dynamically -->
+                  </div>
+                </div>
+              </div>
+
+              <!-- Round Table Properties -->
+              <div id="round-table-props" class="hidden space-y-3">
+                <div>
+                  <label
+                    for="round-radius"
+                    class="block text-sm font-medium text-gray-700 mb-1"
+                    >Radius (meters):</label
+                  >
+                  <input
+                    type="number"
+                    id="round-radius"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    min="0.3"
+                    step="0.1"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    for="round-height"
+                    class="block text-sm font-medium text-gray-700 mb-1"
+                    >Height (meters):</label
+                  >
+                  <input
+                    type="number"
+                    id="round-height"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    min="0.2"
+                    step="0.1"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    for="round-color"
+                    class="block text-sm font-medium text-gray-700 mb-1"
+                    >Color:</label
+                  >
+                  <div class="flex items-center space-x-2">
+                    <input
+                      type="color"
+                      id="round-color"
+                      class="w-10 h-10 border-0 p-0"
+                    />
+                    <div
+                      id="round-color-preview"
+                      class="w-10 h-10 border border-gray-300 rounded"
+                    ></div>
+                  </div>
+                </div>
+
+                <!-- Seats Section -->
+                <div>
+                  <div class="flex justify-between items-center mb-2">
+                    <label class="block text-sm font-medium text-gray-700"
+                      >Seats:</label
+                    >
+                    <button
+                      id="add-round-seat-btn"
+                      class="text-xs bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded"
+                    >
+                      Add Seat
+                    </button>
+                  </div>
+                  <div
+                    id="round-seats-container"
+                    class="bg-gray-50 p-2 rounded border border-gray-200 text-sm max-h-40 overflow-y-auto"
+                  >
+                    <!-- Seats will be added here dynamically -->
+                  </div>
+                </div>
+              </div>
+
+              <!-- Seat Properties -->
+              <div id="seat-props" class="hidden space-y-3">
+                <div>
+                  <label
+                    for="person-name"
+                    class="block text-sm font-medium text-gray-700 mb-1"
+                    >Person Name:</label
+                  >
+                  <input
+                    type="text"
+                    id="person-name"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="Enter person's name"
+                  />
+                </div>
+              </div>
+
+              <!-- Update Button -->
+              <div class="mt-6 flex justify-end space-x-2">
+                <button
+                  id="update-object-btn"
+                  class="py-2 px-4 bg-success text-white font-medium rounded-md hover:bg-green-600 transition-colors"
+                >
+                  Update
+                </button>
+                <button
+                  id="delete-object-btn"
+                  class="py-2 px-4 bg-danger text-white font-medium rounded-md hover:bg-red-600 transition-colors"
+                >
+                  Delete
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -526,74 +570,99 @@
 
     <script src="bundle.js"></script>
 
-    <!-- Consolidated dashboard scripts -->
+    <!-- Consolidated dashboard scripts with improved animations -->
     <script>
       // IMPORTANT: Let the Dashboard.js initialize the click handlers
       // We'll prevent duplicate event handlers by using this approach
 
       // WAIT FOR APP INITIALIZATION
-      window.addEventListener("load", function() {
+      window.addEventListener("load", function () {
         console.log("Window loaded, setting up UI handlers");
 
         // Toggle dashboard button handler
-        document.getElementById("toggle-dashboard").addEventListener("click", function() {
-          toggleDashboard();
-        });
+        document
+          .getElementById("toggle-dashboard")
+          .addEventListener("click", function () {
+            toggleDashboard();
+          });
 
         // Close dashboard button handler
-        document.getElementById("close-dashboard").addEventListener("click", function() {
-          document.getElementById("dashboard").style.display = "none";
-        });
+        document
+          .getElementById("close-dashboard")
+          .addEventListener("click", function () {
+            closeDashboard();
+          });
 
         // Room setup button (handled by Dashboard.js create-room-btn event listener)
 
         // Emergency dashboard show/hide button
-        document.getElementById("emergency-show").addEventListener("click", function() {
-          toggleDashboard();
-          const icon = this.querySelector("svg");
-          icon.classList.toggle("rotate-180");
-        });
+        document
+          .getElementById("emergency-show")
+          .addEventListener("click", function () {
+            toggleDashboard();
+            const icon = this.querySelector("svg");
+            icon.classList.toggle("rotate-180");
+          });
 
         // Update drag and drop event handlers for scene container
         setupDragAndDropHandlers();
-        
+
         // Fix DragControls after a short delay
         setTimeout(applyDragControlsFix, 1000);
       });
 
-      // Helper functions
+      // Helper functions with improved animation handling
       function toggleDashboard() {
         const dashboard = document.getElementById("dashboard");
-        const currentDisplay = window.getComputedStyle(dashboard).display;
-        
-        if (currentDisplay === "none") {
-          showDashboard();
+        console.log(
+          "Toggling dashboard, current state:",
+          dashboard.classList.contains("open")
+        );
+
+        if (dashboard.classList.contains("open")) {
+          closeDashboard();
         } else {
-          dashboard.style.display = "none";
+          showDashboard();
         }
       }
-      
+
       function showDashboard() {
         const dashboard = document.getElementById("dashboard");
-        dashboard.style.cssText =
-          "position: fixed; top: 0; right: 0; width: 320px; height: 100%; " +
-          "background-color: white; box-shadow: -2px 0 10px rgba(0,0,0,0.1); " +
-          "z-index: 9999; display: block !important; visibility: visible !important; opacity: 1 !important;";
+
+        dashboard.style.removeProperty("visibility");
+        dashboard.style.removeProperty("display");
+
+        dashboard.classList.add("open");
+        console.log("Dashboard shown");
       }
-      
+
+      function closeDashboard() {
+        const dashboard = document.getElementById("dashboard");
+
+        // Start animation
+        dashboard.classList.remove("open");
+
+        // Hide completely after animation completes
+        // setTimeout(() => {
+        //   dashboard.style.visibility = "hidden";
+        // }, 300);
+      }
+
       function applyDragControlsFix() {
         if (window._dashboard) {
           console.log("Applying drag controls fix");
           window._dashboard.fixDragControlsMatrixWorldError();
         } else {
-          console.warn("Dashboard instance not available, skipping drag controls fix");
+          console.warn(
+            "Dashboard instance not available, skipping drag controls fix"
+          );
         }
       }
-      
+
       function setupDragAndDropHandlers() {
         const sceneContainer = document.getElementById("scene-container");
         if (!sceneContainer) return;
-        
+
         sceneContainer.addEventListener("dragover", (e) => {
           e.preventDefault();
           e.dataTransfer.dropEffect = "copy";
@@ -613,11 +682,13 @@
       // IMPORTANT: ONLY ADD CLICK HANDLERS FROM HERE
       // This ensures we don't duplicate event handlers
       // ======================================================
-      document.addEventListener("DOMContentLoaded", function() {
+      document.addEventListener("DOMContentLoaded", function () {
         // Let Dashboard.js initialize everything through its own methods
         // DO NOT add draggable item click handlers here - they should only be added once by Dashboard.js
-        
-        console.log("DOMContentLoaded: Dashboard.js will handle object creation");
+
+        console.log(
+          "DOMContentLoaded: Dashboard.js will handle object creation"
+        );
       });
     </script>
   </body>
